@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Núcleo</title>
+<link rel="stylesheet" href="/static/estilo.css">
+</head>
+<body>
+<aside class="trilho">
+  <div class="marca">Núcleo<small id="nome-usuario"></small></div>
+  <nav class="nav" aria-label="Telas">
+    <button data-tela="nucleo" class="nav-nucleo">Núcleo</button>
+    <button data-tela="hoje" aria-current="page">Hoje</button>
+    <button data-tela="emails">E-mails</button>
+    <button data-tela="mente">Mente</button>
+    <button data-tela="pessoas">Pessoas</button>
+    <button data-tela="agenda">Agenda</button>
+    <button data-tela="financeiro">Financeiro <span class="conta" id="conta-fin"></span></button>
+    <button data-tela="ajustes">Ajustes</button>
+  </nav>
+  <div class="rodape-trilho">
+    <button class="btn-atualizar" onclick="abrirBusca()">Buscar <kbd>Ctrl K</kbd></button>
+    <div class="selo-licenca" id="selo-licenca" hidden></div>
+    <button class="btn-atualizar" id="btn-atualizar">Atualizar agora</button>
+    <span class="estado" id="estado"></span>
+    <span class="estado" id="versao" style="opacity:.4"></span>
+  </div>
+</aside>
+
+<main class="area">
+  <section class="tela ativa" id="tela-hoje" aria-label="Hoje"></section>
+  <section class="tela nucleo" id="tela-nucleo" aria-label="Núcleo">
+    <button class="n-btn n-paineis-btn" id="n-paineis" onclick="alternarPaineis()">Painéis</button>
+    <div class="n-col esquerda">
+      <div class="n-nucleo">
+        <canvas id="n-canvas" width="520" height="520" aria-hidden="true"></canvas>
+        <div class="n-estado" id="n-estado">Em espera</div>
+        <div class="n-sub" id="n-sub">Tudo é analisado neste computador.</div>
+        <div class="n-humor" id="n-humor" data-humor="normal"><i></i><span>Tudo em ordem</span></div>
+        <div class="n-motivos" id="n-motivos"></div>
+      </div>
+      <div class="n-ia" id="n-ia"><i></i><span>Verificando a IA local…</span></div>
+      <div class="n-priv tres-col">
+        <div><b id="n-local">0</b><span>respostas locais</span></div>
+        <div><b id="n-aprendizados">0</b><span>aprendizados</span></div>
+        <div><b id="n-envios-mes">0</b><span>envios ao Claude</span></div>
+      </div>
+      <div class="n-painel" style="flex:1;min-height:0;display:flex;flex-direction:column">
+        <h2>Lembretes</h2>
+        <ul class="n-lista" id="n-lembretes"></ul>
+      </div>
+    </div>
+    <div class="n-col">
+      <div class="n-feed" id="n-feed" aria-live="polite"></div>
+      <div class="n-chips" id="n-chips"></div>
+      <div class="n-comando">
+        <input id="n-input" autocomplete="off" placeholder="Pergunte, anote ou peça algo…  (Ctrl+Shift+K)" aria-label="Pedido ao Núcleo">
+        <button class="n-mic" id="n-mic" aria-label="Falar" title="Falar (transcrição local)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        </button>
+        <button class="n-mic" id="n-conversa" aria-label="Conversar por voz" title="Modo conversa: fale à vontade, ele responde em voz">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg>
+        </button>
+        <button class="n-enviar" id="n-enviar" aria-label="Enviar pedido">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="n-col direita">
+      <div class="n-painel"><h2>Mapa da memória</h2><canvas id="n-mapa" aria-label="Pessoas e projetos ligados na memória"></canvas></div>
+      <div class="n-painel" style="flex:1;min-height:0;display:flex;flex-direction:column">
+        <h2 id="n-novidades-titulo">Novidades da internet</h2><ul class="n-lista n-novidades" id="n-novidades"></ul>
+      </div>
+      <div class="n-painel" style="max-height:180px;display:flex;flex-direction:column">
+        <h2>Anotado recentemente</h2><ul class="n-lista" id="n-notas"></ul>
+      </div>
+      <div class="n-atalhos">
+        <button class="n-btn" id="n-abrir-conhecimento">O que sei de você</button>
+        <button class="n-btn" id="n-abrir-fontes">Fontes e envios</button>
+        <button class="n-btn" id="n-abrir-acoes">Ações</button>
+      </div>
+    </div>
+  </section>
+
+
+  <section class="tela" id="tela-agenda" aria-label="Agenda">
+    <div class="barra">
+      <button class="btn" id="ag-ant" aria-label="Período anterior">‹</button>
+      <button class="btn" id="ag-hoje">Hoje</button>
+      <button class="btn" id="ag-prox" aria-label="Próximo período">›</button>
+      <h1 class="titulo-periodo" id="ag-titulo"></h1>
+      <div class="segmento" role="group" aria-label="Visualização">
+        <button id="ag-semana" aria-pressed="true">Semana</button>
+        <button id="ag-mes" aria-pressed="false">Mês</button>
+      </div>
+      <div class="legenda" id="ag-legenda"></div>
+    </div>
+    <div class="painel" id="ag-corpo"></div>
+    <ul class="falhas" id="ag-falhas" style="margin-top:12px"></ul>
+  </section>
+
+  <section class="tela" id="tela-ajustes" aria-label="Ajustes"></section>
+  <section class="tela" id="tela-emails" aria-label="E-mails"></section>
+  <section class="tela" id="tela-mente" aria-label="Mente"></section>
+  <section class="tela" id="tela-pessoas" aria-label="Pessoas"></section>
+
+  <section class="tela" id="tela-financeiro" aria-label="Financeiro">
+    <div class="topo">
+      <div>
+        <h1 id="fin-titulo">Financeiro</h1>
+        <div class="sub">Contas a pagar e a receber por carteira. Faturas encontradas nos e-mails entram como “a confirmar”.</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="fin-ant" aria-label="Mês anterior">‹</button>
+        <button class="btn" id="fin-atual">Este mês</button>
+        <button class="btn" id="fin-prox" aria-label="Próximo mês">›</button>
+        <button class="btn primario" id="fin-novo">Novo lançamento</button>
+      </div>
+    </div>
+    <div class="numeros" id="fin-numeros"></div>
+    <div class="fin">
+      <div>
+        <div class="filtros" id="fin-filtros"></div>
+        <div class="painel tabela-wrap"><table class="tabela" id="fin-tabela"></table></div>
+      </div>
+      <div class="painel carteiras" id="fin-carteiras"></div>
+    </div>
+  </section>
+</main>
+
+<div class="painel detalhe" id="detalhe" role="dialog" aria-modal="false"></div>
+<div class="veu" id="veu"></div>
+<aside class="gaveta" id="gaveta" role="dialog" aria-modal="true" aria-labelledby="gaveta-titulo">
+  <h2 id="gaveta-titulo">Novo lançamento</h2>
+  <div class="campo">
+    <label>Tipo</label>
+    <div class="segmento" role="group">
+      <button type="button" data-tipo="pagar" aria-pressed="true">A pagar</button>
+      <button type="button" data-tipo="receber" aria-pressed="false">A receber</button>
+    </div>
+  </div>
+  <div class="campo"><label for="f-desc">Descrição</label><input id="f-desc" maxlength="160" placeholder="Ex.: Cartão Nubank, Aluguel, Licença Microsoft 365"></div>
+  <div class="duas">
+    <div class="campo"><label for="f-valor">Valor (R$)</label><input id="f-valor" inputmode="decimal" placeholder="0,00"></div>
+    <div class="campo"><label for="f-venc">Vencimento</label><input id="f-venc" type="date"></div>
+  </div>
+  <div class="duas">
+    <div class="campo"><label for="f-cart">Carteira</label><select id="f-cart"></select></div>
+    <div class="campo"><label for="f-cat">Categoria</label><input id="f-cat" list="lista-cat" maxlength="60"><datalist id="lista-cat"></datalist></div>
+  </div>
+  <div class="campo"><label for="f-rec">Repetição</label>
+    <select id="f-rec"><option value="nenhuma">Não se repete</option><option value="mensal">Todo mês</option><option value="anual">Todo ano</option></select>
+  </div>
+  <div class="campo"><label for="f-obs">Observação</label><textarea id="f-obs" maxlength="300"></textarea></div>
+  <div class="erro-form" id="f-erro"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end">
+    <button class="btn" id="f-cancelar">Cancelar</button>
+    <button class="btn primario" id="f-salvar">Salvar</button>
+  </div>
+</aside>
+<div class="briefing" id="briefing" role="dialog" aria-modal="true" aria-label="Briefing do dia">
+  <div class="b-topo"><span id="b-estado">FALANDO</span>
+    <div class="b-ctrl">
+      <button id="b-pausa">Pausar</button><button id="b-pular">Pular</button>
+      <button id="b-tela">Tela cheia</button><button id="b-fechar">Fechar</button>
+    </div>
+  </div>
+  <div class="b-palco"><canvas id="b-canvas" width="520" height="520" aria-hidden="true"></canvas><div class="b-atual" id="b-atual"></div></div>
+  <div class="b-legenda" id="b-legenda" aria-live="polite"></div>
+  <div class="b-bandeja" id="b-bandeja"></div>
+  <button class="b-iniciar" id="b-iniciar">Toque para começar</button>
+</div>
+<div class="boasvindas" id="boasvindas" role="dialog" aria-modal="true" aria-label="Primeiros passos"></div>
+<div class="aviso" id="aviso" role="status"></div>
+<div class="n-modal" id="n-modal" role="dialog" aria-modal="true" aria-labelledby="n-modal-titulo"><div class="caixa" id="n-modal-caixa"></div></div>
+
+
+<script src="/static/js/base.js"></script>
+<script src="/static/js/hoje.js"></script>
+<script src="/static/js/agenda.js"></script>
+<script src="/static/js/financeiro.js"></script>
+<script src="/static/js/nucleo.js"></script>
+<script src="/static/js/briefing.js"></script>
+<script src="/static/js/ajustes.js"></script>
+<script src="/static/js/nucleo_estados.js"></script>
+<script src="/static/js/emails.js"></script>
+<script src="/static/js/mente.js"></script>
+<script src="/static/js/ajustes_extras.js"></script>
+<script src="/static/js/primeiros_passos.js"></script>
+<script src="/static/js/busca.js"></script>
+<script src="/static/js/pessoas.js"></script>
+<script src="/static/js/inicio.js"></script>
+</body>
+</html>

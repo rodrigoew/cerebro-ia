@@ -1,0 +1,10 @@
+icalendar>=5.0
+recurring-ical-events>=2.0
+keyring>=24.0
+pywebview>=5.0
+numpy>=1.26
+cryptography>=42
+pystray>=0.19
+pillow>=10
+pynput>=1.7
+pygetwindow>=0.0.9

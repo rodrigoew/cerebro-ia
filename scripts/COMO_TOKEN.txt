@@ -1,0 +1,7 @@
+Como gerar o token do GitHub (senha de aplicativo)
+
+1. Entre em github.com e va em Settings (foto do perfil) > Developer settings.
+2. Personal access tokens > Tokens (classic) > Generate new token (classic).
+3. Marque a permissao "repo". Gere e copie o token.
+4. No "git push", use seu usuario do GitHub e cole o TOKEN no lugar da senha.
+   (O Windows guarda e nao pede de novo.)

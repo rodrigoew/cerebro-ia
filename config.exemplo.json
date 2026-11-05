@@ -1,0 +1,294 @@
+{
+  "nome": "",
+  "edicao": "pessoal",
+  "fuso": "America/Sao_Paulo",
+  "porta": 8765,
+  "janela": "propria",
+  "assistente": {
+    "nome": "Núcleo"
+  },
+  "contas": [],
+  "meus_enderecos_extras": [],
+  "calendarios_ics": [],
+  "carteiras": [
+    "Pessoal",
+    "Trabalho"
+  ],
+  "carteiras_por_contexto": {
+    "pessoal": "Pessoal",
+    "trabalho": "Trabalho"
+  },
+  "categorias": [
+    "Cartão de crédito",
+    "Fatura",
+    "Moradia",
+    "Contas da casa",
+    "Impostos",
+    "Assinaturas e software",
+    "Fornecedores",
+    "Salário",
+    "Clientes",
+    "Saúde",
+    "Educação",
+    "Lazer"
+  ],
+  "dias_caixa": 14,
+  "dias_enviados": 180,
+  "limite_mensagens": 400,
+  "limite_enviados": 2000,
+  "limite_pop": 60,
+  "regras": {
+    "dias_sem_resposta_para_subir": 3,
+    "dias_antecedencia_fatura": 3,
+    "prioridade_prospeccao": true,
+    "contexto_prospeccao": "",
+    "dominios_ferramentas": [
+      "stripe.com",
+      "paddle.com",
+      "aws.amazon.com",
+      "amazonaws.com",
+      "microsoft.com",
+      "adobe.com",
+      "atlassian.com",
+      "github.com",
+      "zoom.us",
+      "slack.com",
+      "notion.so",
+      "canva.com",
+      "openai.com",
+      "anthropic.com",
+      "dropbox.com",
+      "hostinger.com",
+      "godaddy.com",
+      "registro.br",
+      "locaweb.com.br",
+      "hostgator.com.br"
+    ],
+    "palavras_urgencia": [
+      "urgente",
+      "hoje",
+      "prazo",
+      "asap",
+      "bloqueado",
+      "parado",
+      "fora do ar",
+      "vencimento",
+      "aprovação"
+    ],
+    "contas_com_vencimento_podem_subir": true
+  },
+  "lembretes_fixos": [],
+  "claude_api": {
+    "modelo": "claude-sonnet-5-5",
+    "envio_no_nucleo": "sempre_perguntar",
+    "caracteres_por_trecho": 900,
+    "resumo_automatico": false
+  },
+  "nuvem": {
+    "provedor": "claude",
+    "url_openai": "https://api.openai.com/v1",
+    "modelo_openai": "gpt-4o-mini",
+    "rotulo": ""
+  },
+  "microsoft": {
+    "client_id": "",
+    "tenant": "common"
+  },
+  "cerebro": {
+    "perfil": "",
+    "dias_memoria_email": 365,
+    "caracteres_por_email": 6000,
+    "corpos_enviados_por_execucao": 40,
+    "hora_consolidacao": 22,
+    "dias_artigos": 120,
+    "projetos": {
+      "Pessoal": [
+        "casa",
+        "familia",
+        "família",
+        "saude",
+        "saúde",
+        "medico",
+        "médico"
+      ],
+      "Trabalho": [
+        "trabalho",
+        "reuniao",
+        "reunião",
+        "cliente",
+        "projeto",
+        "relatorio",
+        "relatório"
+      ]
+    }
+  },
+  "llm_local": {
+    "ativo": true,
+    "url": "http://127.0.0.1:11434",
+    "modelo": "qwen3:8b",
+    "modelo_embedding": "bge-m3",
+    "contexto": 8192,
+    "manter_carregado": "30m"
+  },
+  "voz": {
+    "modelo_whisper": "large-v3-turbo",
+    "modelo_whisper_cpu": "small",
+    "dispositivo": "auto",
+    "precisao_gpu": "int8_float16",
+    "velocidade": 1.05,
+    "vocabulario": [
+      "Núcleo"
+    ],
+    "modelo_vosk": "modelos/vosk-model-small-pt-0.3",
+    "voz": "kokoro:pf_dora"
+  },
+  "fontes_iniciais": [
+    {
+      "nome": "The Hacker News",
+      "url": "https://feeds.feedburner.com/TheHackersNews",
+      "tema": "Segurança",
+      "horas": 6
+    },
+    {
+      "nome": "BleepingComputer",
+      "url": "https://www.bleepingcomputer.com/feed/",
+      "tema": "Segurança",
+      "horas": 6
+    },
+    {
+      "nome": "CISA – alertas",
+      "url": "https://www.cisa.gov/cybersecurity-advisories/all.xml",
+      "tema": "Segurança",
+      "horas": 12
+    },
+    {
+      "nome": "Tecmundo",
+      "url": "https://rss.tecmundo.com.br/feed",
+      "tema": "Tecnologia",
+      "horas": 24
+    },
+    {
+      "nome": "Canaltech",
+      "url": "https://canaltech.com.br/rss/",
+      "tema": "Tecnologia",
+      "horas": 24
+    },
+    {
+      "nome": "Agência Brasil – Economia",
+      "url": "https://agenciabrasil.ebc.com.br/rss/economia/feed.xml",
+      "tema": "Empreender",
+      "horas": 24
+    }
+  ],
+  "clima": {
+    "locais": []
+  },
+  "briefing": {
+    "estilo": "completo",
+    "noticias": 3,
+    "max_emails": 2,
+    "abertura": "",
+    "fechamento": "",
+    "temas_noticias": [
+      "Segurança",
+      "Microsoft 365",
+      "Tecnologia",
+      "Empreender",
+      "Marketing"
+    ],
+    "blocos": [
+      {
+        "id": "desde_ontem",
+        "ativo": true
+      },
+      {
+        "id": "clima",
+        "ativo": true
+      },
+      {
+        "id": "agenda",
+        "ativo": true
+      },
+      {
+        "id": "atencao",
+        "ativo": true
+      },
+      {
+        "id": "compromissos",
+        "ativo": true
+      },
+      {
+        "id": "financeiro",
+        "ativo": true
+      },
+      {
+        "id": "lembretes",
+        "ativo": true
+      },
+      {
+        "id": "sistema",
+        "ativo": true
+      },
+      {
+        "id": "noticias",
+        "ativo": true
+      },
+      {
+        "id": "fechamento",
+        "ativo": true
+      }
+    ]
+  },
+  "acoes": {
+    "pastas_busca": [
+      "%USERPROFILE%\\Desktop",
+      "%USERPROFILE%\\Documents",
+      "%USERPROFILE%\\Downloads",
+      "%USERPROFILE%\\OneDrive"
+    ],
+    "apelidos_programas": {
+      "planilha": "excel",
+      "email": "outlook",
+      "navegador": "edge"
+    },
+    "verificar_atualizacoes_horas": 24,
+    "atualizar_automaticamente": [],
+    "ferramentas_desligadas": [],
+    "scripts_desligados": [],
+    "scripts": {}
+  },
+  "pasta_saida": "saida",
+  "freellmapi": {
+    "ativo": false,
+    "pasta": "vendor/freellmapi",
+    "url": "http://localhost:3001/v1",
+    "iniciar_junto": true
+  },
+  "bandeja": true,
+  "fechar_para_bandeja": true,
+  "atalho_global": "<ctrl>+<alt>+<space>",
+  "sincronizacao": {
+    "ativo": false,
+    "papel": "central",
+    "servidor": "",
+    "automatico": true
+  },
+  "vigia": {
+    "ativo": false,
+    "intervalo_s": 4,
+    "silencio_min": 20,
+    "mostrar_janela": false,
+    "horas_de_impulso": [
+      [
+        22,
+        23
+      ],
+      [
+        0,
+        2
+      ]
+    ],
+    "desligados": []
+  },
+  "acesso_lan": false
+}

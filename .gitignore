@@ -1,0 +1,25 @@
+# Dados pessoais e gerados (NUNCA vão para o Git)
+config.json
+config.json.bak
+config.json.tmp
+saida/
+modelos/
+*.db
+*.log
+.instalado_em
+licenca.json
+licenca-*.json
+ferramentas_vendedor/chave_privada.pem
+
+# Python e empacotamento
+__pycache__/
+*.pyc
+.venv/
+venv/
+build/
+dist/
+*.spec
+
+# Sistema
+.DS_Store
+Thumbs.db
