@@ -113,7 +113,7 @@ class Instalador:
         if cfg.get("llm_local", {}).get("modelo_escolhido_manualmente"):
             self.registrar(f"Mantendo o modelo escolhido: {self.app.llm.modelo}.")
             return
-        modelo = "qwen3:14b" if vram >= 12 else "qwen3:8b" if vram >= 7 else "qwen3:4b"
+        modelo = "qwen3:14b" if vram >= 16 else "qwen3:8b" if vram >= 7 else "qwen3:4b"
         cfg.setdefault("llm_local", {})["modelo"] = modelo
         cfg.setdefault("voz", {})["dispositivo"] = "auto" if vram >= 6 else "cpu"
         self.app.llm.modelo = modelo
