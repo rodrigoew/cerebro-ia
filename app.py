@@ -187,6 +187,7 @@ class Aplicativo:
         self._notificacoes: list[dict] = []
         self.sinc = Sincronizador(self)
         self.vigia = Vigia(self)
+        self.presenca = {"ativo": False, "estado": "espera", "nivel": 0.0, "humor": "normal", "legenda": "", "quando": 0}
         contas.oauth(cfg)
         self.rotina = {"ultima_volta": None, "coletando": False, "consolidando": False, "ultimo_erro": None}
         self.instalador = Instalador(self)
@@ -416,6 +417,51 @@ class Aplicativo:
                 if c["direcao"] == "eu_devo" and c["prazo"] <= hoje.isoformat() and self._uma_vez(f"comp:{c['id']}:{hoje}"):
                     self.notificar("Compromisso", f"Você prometeu a {c['pessoa_nome'] or c['pessoa']}: {c['texto']}",
                                    "risco" if c["prazo"] < hoje.isoformat() else "atencao", "pessoas")
+
+    # ------------------------------------------------------------ foco do momento (tela inicial)
+    def foco(self) -> list[dict]:
+        """O que vale a pena ver agora, do mais urgente ao menos. Vira os atalhos da tela inicial."""
+        hoje = self.agora().date()
+        itens = []
+        contas = self.contas_urgentes(hoje)
+        if contas:
+            pior = max(p for p, _ in contas)
+            itens.append({"id": "financeiro", "rotulo": "Financeiro", "detalhe": f"{len(contas)} conta(s) pedindo atenção",
+                          "nivel": "risco" if pior >= 110 else "atencao", "pergunta": "quanto falta pagar este mês?"})
+        comp = self.pessoas.urgentes(hoje)
+        if comp:
+            atraso = any(c["direcao"] == "eu_devo" and c["prazo"] < hoje.isoformat() for c in comp)
+            itens.append({"id": "compromissos", "rotulo": "Compromissos", "detalhe": f"{len(comp)} promessa(s) com prazo",
+                          "nivel": "risco" if atraso else "atencao", "pergunta": "o que eu prometi?"})
+        try:
+            resp = [e for e in self.emails_listar("resposta", limite=60)
+                    if (e["data"] or "") >= (self.agora() - dt.timedelta(days=3)).isoformat()]
+        except Exception:
+            resp = []
+        if resp:
+            itens.append({"id": "emails", "rotulo": "E-mails", "detalhe": f"{len(resp)} pedem resposta",
+                          "nivel": "atencao" if len(resp) >= 3 else "normal", "pergunta": "quais e-mails precisam de resposta?"})
+        try:
+            eventos, _ = self.eventos(hoje, hoje)
+        except Exception:
+            eventos = []
+        itens.append({"id": "agenda", "rotulo": "Agenda", "detalhe": f"{len(eventos)} compromisso(s) hoje" if eventos else "dia livre",
+                      "nivel": "normal", "pergunta": "o que tenho hoje?"})
+        lemb = self.memoria.lembretes_abertos(ate=hoje)
+        if lemb:
+            itens.append({"id": "lembretes", "rotulo": "Lembretes", "detalhe": f"{len(lemb)} para hoje ou atrasados",
+                          "nivel": "atencao" if any(l["data"] and l["data"] < hoje.isoformat() for l in lemb) else "normal",
+                          "pergunta": "minhas pendências"})
+        at = json.loads(self.aprendizado.ler_estado("atualizacoes", "{}") or "{}")
+        seg = [w for w in at.get("windows", []) if w.get("seguranca")]
+        if seg:
+            itens.append({"id": "seguranca", "rotulo": "Segurança", "detalhe": f"{len(seg)} atualização(ões) de segurança",
+                          "nivel": "atencao", "pergunta": "verifica se tem atualizações"})
+        itens.append({"id": "briefing", "rotulo": "Briefing do dia", "detalhe": "tudo isso narrado", "nivel": "normal",
+                      "pergunta": "bom dia"})
+        ordem = {"risco": 0, "atencao": 1, "normal": 2}
+        itens.sort(key=lambda i: (ordem[i["nivel"]], i["id"] == "briefing"))
+        return itens[:6]
 
     # ------------------------------------------------------------ busca global (Ctrl+K)
     def busca_global(self, q: str) -> list[dict]:
@@ -1165,6 +1211,21 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                                      "processos": app.mente.processos()})
                 elif url.path == "/api/licenca":
                     self._json(200, app.licenca.status())
+                elif url.path == "/api/foco":
+                    self._json(200, {"foco": app.foco()})
+                elif url.path == "/api/presenca":
+                    self._json(200, {**app.presenca, "vigia": app.vigia.ligado})
+                elif url.path == "/indicador":
+                    corpo = (RECURSOS / "static" / "indicador.html").read_bytes()
+                    self.send_response(200)
+                    self.send_header("Set-Cookie", f"nucleo_token={token}; Path=/; SameSite=Strict; HttpOnly")
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'self' 'unsafe-inline'; "
+                                     "script-src 'self'; connect-src 'self'; img-src 'self'")
+                    self.send_header("Content-Length", str(len(corpo)))
+                    self.end_headers()
+                    self.wfile.write(corpo)
                 elif url.path == "/api/sinc":
                     self._json(200, {**app.sinc.cfg, "ultimo": app.sinc.ultimo, "tem_frase": bool(app.sinc.frase()), "este_ip": _ip_local()})
                 elif url.path == "/api/busca":
@@ -1177,12 +1238,15 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                     self._json(200, {"compromissos": app.pessoas.listar(q.get("estado", "aberto"), q.get("direcao", ""), q.get("pessoa", ""))})
                 elif url.path == "/api/nuvem":
                     n = app.cfg.get("nuvem", {})
-                    self._json(200, {**provedores.ativo(app.cfg), "url_openai": n.get("url_openai", "https://api.openai.com/v1"),
+                    self._json(200, {**provedores.ativo(app.cfg), "provedor_auto": provedores.ativo(app.cfg, "auto")["provedor"],
+                                     "provedor_aprofundar": provedores.ativo(app.cfg)["provedor"],
+                                     "url_openai": n.get("url_openai", "https://api.openai.com/v1"),
                                      "modelo_openai": n.get("modelo_openai", "gpt-4o-mini"), "rotulo_openai": n.get("rotulo", ""),
                                      "modelo_claude": app.cfg.get("claude_api", {}).get("modelo", "claude-sonnet-5-5"),
                                      "chave_claude": bool(provedores.chave("claude")),
                                      "chave_openai": bool(provedores.chave("openai")),
-                                     "politica": app.cfg.get("claude_api", {}).get("envio_no_nucleo", "sempre_perguntar")})
+                                     "politica": app.cfg.get("claude_api", {}).get("envio_no_nucleo", "sempre_perguntar"),
+                                     "roteamento": n.get("roteamento", "perguntar")})
                 elif url.path == "/api/ajustes/cidades":
                     nome = q.get("q", "").strip()
                     if len(nome) < 2:
@@ -1367,6 +1431,9 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                     n = app.cfg.setdefault("nuvem", {})
                     if corpo.get("provedor") in ("claude", "openai"):
                         n["provedor"] = corpo["provedor"]
+                        n["provedor_aprofundar"] = corpo["provedor"]
+                    if corpo.get("provedor_auto") in ("claude", "openai"):
+                        n["provedor_auto"] = corpo["provedor_auto"]
                     for k in ("url_openai", "modelo_openai", "rotulo"):
                         if k in corpo:
                             n[k] = str(corpo[k]).strip()[:200]
@@ -1374,19 +1441,25 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                         raise ValueError("O endereço deve começar com http:// ou https://.")
                     if corpo.get("modelo_claude"):
                         app.cfg.setdefault("claude_api", {})["modelo"] = str(corpo["modelo_claude"]).strip()[:80]
+                    if corpo.get("roteamento") in ("perguntar", "geral", "total"):
+                        n["roteamento"] = corpo["roteamento"]
                     if corpo.get("politica") in ("sempre_perguntar", "nunca"):
                         app.cfg.setdefault("claude_api", {})["envio_no_nucleo"] = corpo["politica"]
                     app.salvar_config()
                     self._json(200, {"ok": True})
                 elif url.path == "/api/nuvem/testar":
-                    self._json(200, provedores.testar(app.cfg))
+                    papel = self._corpo().get("papel", "auto")
+                    self._json(200, provedores.testar(app.cfg, "auto" if papel != "aprofundar" else "aprofundar"))
                 elif url.path == "/api/nuvem/freellmapi":
                     corpo = self._corpo()
                     fla = app.cfg.setdefault("freellmapi", {})
                     fla.update({"ativo": True, "url": str(corpo.get("url") or fla.get("url") or "http://localhost:3001/v1")[:200]})
-                    app.cfg.setdefault("nuvem", {}).update({"provedor": "openai", "url_openai": fla["url"],
+                    nv = app.cfg.setdefault("nuvem", {})
+                    nv.setdefault("provedor_aprofundar", nv.get("provedor", "claude") if nv.get("provedor") != "openai" else "claude")
+                    app.cfg.setdefault("nuvem", {}).update({"provedor_auto": "openai", "url_openai": fla["url"],
                                                             "modelo_openai": str(corpo.get("modelo") or "auto")[:80],
-                                                            "rotulo": "FreeLLMAPI (local)"})
+                                                            "rotulo": "FreeLLMAPI",
+                                                            "roteamento": app.cfg.get("nuvem", {}).get("roteamento") if app.cfg.get("nuvem", {}).get("roteamento", "perguntar") != "perguntar" else "geral"})
                     app.salvar_config()
                     self._json(200, {"ok": True, "mensagem": app.iniciar_freellmapi(forcar=True), "estado": app.freellmapi_estado()})
                 elif url.path == "/api/nuvem/chave":
@@ -1400,6 +1473,15 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                     self._json(200, {"mensagem": agendar(horario, app.caminho_cfg, retornar=True)})
                 elif url.path == "/api/acoes/confirmar":
                     self._json(200, app.acoes.confirmar(str(self._corpo().get("token", ""))))
+                elif url.path == "/api/presenca":
+                    corpo = self._corpo()
+                    for k in ("ativo", "estado", "humor", "legenda"):
+                        if k in corpo:
+                            app.presenca[k] = corpo[k] if k != "legenda" else str(corpo[k])[:160]
+                    if "nivel" in corpo:
+                        app.presenca["nivel"] = max(0.0, min(1.0, float(corpo["nivel"] or 0)))
+                    app.presenca["quando"] = time.time()
+                    self._json(200, {"ok": True})
                 elif url.path == "/api/sinc/trocar":
                     try:
                         self._json(200, app.sinc.atender(self._corpo()))
@@ -1686,29 +1768,101 @@ def navegador_modo_app() -> str | None:
 
 
 JANELA_WV = None          # janela do pywebview, quando em uso
+INDICADOR_WV = None       # indicador flutuante (ouvindo/falando), sempre por cima
+ICONE = RECURSOS / "static" / "icone.ico"
+
+
+def _icone_windows(titulo: str) -> None:
+    """Põe o ícone do Núcleo na janela e na barra de tarefas (no Windows, mesmo rodando pelo Python)."""
+    if platform.system() != "Windows" or not ICONE.exists():
+        return
+    try:
+        import ctypes
+        u32 = ctypes.windll.user32
+        for _ in range(40):                      # espera a janela existir
+            hwnd = u32.FindWindowW(None, titulo)
+            if hwnd:
+                break
+            time.sleep(0.25)
+        else:
+            return
+        grande = u32.LoadImageW(None, str(ICONE), 1, 256, 256, 0x10)
+        pequeno = u32.LoadImageW(None, str(ICONE), 1, 32, 32, 0x10)
+        u32.SendMessageW(hwnd, 0x0080, 1, grande)    # WM_SETICON, ICON_BIG
+        u32.SendMessageW(hwnd, 0x0080, 0, pequeno)   # WM_SETICON, ICON_SMALL
+    except Exception:
+        pass
+
+
+class ApiJanela:
+    """Funções que a interface chama na janela própria (pywebview)."""
+    def alternar_tela_cheia(self):
+        if JANELA_WV is not None:
+            JANELA_WV.toggle_fullscreen()
+        return True
+
+    def mostrar_principal(self):
+        if JANELA_WV is not None:
+            JANELA_WV.show()
+            JANELA_WV.restore()
+        if INDICADOR_WV is not None:
+            INDICADOR_WV.hide()
+        return True
 
 
 def abrir_janela(url: str, bloquear: bool, app=None) -> None:
     """Prefere uma janela própria (pywebview). Sem ela, usa Edge/Chrome em modo app."""
-    global JANELA_WV
+    global JANELA_WV, INDICADOR_WV
+    cfg = app.cfg if app is not None else {}
+    tela_cheia = cfg.get("tela_cheia", True)
+    if platform.system() == "Windows":
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Nucleo.SegundoCerebro")
+        except Exception:
+            pass
     try:
         if JANELA == "navegador":
             raise ImportError
         import webview
-        JANELA_WV = webview.create_window(PRODUTO, url, width=1360, height=880, min_size=(980, 640))
+        api_js = ApiJanela()
+        JANELA_WV = webview.create_window(PRODUTO, url, width=1360, height=880, min_size=(980, 640),
+                                          fullscreen=tela_cheia, background_color="#0A0806", js_api=api_js)
+        if cfg.get("indicador_flutuante", True):
+            largura, altura = 150, 170
+            INDICADOR_WV = webview.create_window(f"{PRODUTO} - indicador", url.split("?")[0].rstrip("/") + "/indicador",
+                                                 width=largura, height=altura, frameless=True, on_top=True,
+                                                 resizable=False, hidden=True, transparent=True,
+                                                 background_color="#0A0806", js_api=api_js, easy_drag=True)
+
+        def esconder_ou_minimizar():
+            if INDICADOR_WV is not None and app is not None and app.presenca.get("ativo"):
+                INDICADOR_WV.show()
+
+        def mostrar_de_volta():
+            if INDICADOR_WV is not None:
+                INDICADOR_WV.hide()
+
         if app is not None and app.bandeja is not None and app.bandeja.icone is not None and \
-                app.cfg.get("fechar_para_bandeja", True):
+                cfg.get("fechar_para_bandeja", True):
             def ao_fechar():
                 JANELA_WV.hide()          # fechar = esconder na bandeja; "Sair" no ícone encerra de verdade
+                esconder_ou_minimizar()
                 return False
             JANELA_WV.events.closing += ao_fechar
-        webview.start()
+        try:
+            JANELA_WV.events.minimized += esconder_ou_minimizar
+            JANELA_WV.events.restored += mostrar_de_volta
+        except Exception:
+            pass
+        webview.start(lambda: _icone_windows(PRODUTO))
         return
     except ImportError:
         pass
     navegador = navegador_modo_app()
     if navegador:
-        subprocess.Popen([navegador, f"--app={url}", "--window-size=1360,880", "--autoplay-policy=no-user-gesture-required"])
+        extras = ["--start-fullscreen"] if tela_cheia else []
+        subprocess.Popen([navegador, f"--app={url}", "--window-size=1360,880", "--autoplay-policy=no-user-gesture-required", *extras])
     else:
         webbrowser.open(url)
     if bloquear:
@@ -1721,6 +1875,8 @@ def mostrar_janela(url: str, alvo: str = "") -> None:
         try:
             JANELA_WV.show()
             JANELA_WV.restore()
+            if INDICADOR_WV is not None:
+                INDICADOR_WV.hide()
             if alvo:
                 JANELA_WV.evaluate_js(f"window.focarAssistente && window.focarAssistente({json.dumps(alvo)})")
             return

@@ -13,6 +13,20 @@ Telas:
 
 Na primeira vez, um assistente de **primeiros passos** pergunta seu nome, o nome do assistente, a voz e a cidade, e depois instala a IA local.
 
+## Novidades da 0.12
+
+- **Tela inicial em palco, em tela cheia.** O núcleo fica no centro, cumprimenta você e pergunta o que você quer ver agora, mostrando só os atalhos que importam no momento (contas, promessas, e-mails, agenda, briefing), do mais urgente ao menos. A resposta surge do núcleo e ocupa o palco. Esc volta ao início. Conversa, lembretes, novidades, memória e status ficam recolhidos nas abas da direita.
+- **Legenda:** o que você disse e o que o assistente está falando aparecem na tela.
+- **Indicador flutuante:** quando a conversa por voz está ligada e você minimiza ou esconde a janela, um pequeno núcleo fica por cima de tudo mostrando se ele está ouvindo, pensando ou falando. Arraste para mudar de lugar; dois cliques abrem o Núcleo.
+- **Roteamento automático (FreeLLMAPI).** O instalador do Núcleo instala e liga o FreeLLMAPI sozinho, que já vem dentro do projeto em `vendor/freellmapi`. Em **Ajustes**, na seção **Nuvem**, escolha o roteamento:
+  - **Manual:** só quando você clicar em Aprofundar.
+  - **Automático para perguntas gerais (recomendado):** perguntas como "o que é BGP?" vão sozinhas, sem nenhum dado seu; tudo que envolve seus e-mails, finanças e notas fica na IA local.
+  - **Automático total:** seus dados também vão, com CPF, cartão, telefone e e-mail mascarados.
+
+  Se o FreeLLMAPI falhar, a IA local assume na hora, sem você perceber. O selo de cada resposta mostra quem respondeu. Falta só um passo seu, uma vez: abrir `http://localhost:3001`, cadastrar as chaves gratuitas dos provedores e colar a chave unificada em **Ajustes**, na seção **Nuvem**.
+- **Dois provedores de nuvem.** As respostas automáticas usam o FreeLLMAPI (grátis). O botão **Aprofundar**, que sempre mostra uma prévia e pede confirmação, usa o Claude. Com o plano **Claude Max**, há um crédito mensal de API sem cartão: quando acaba, os pedidos param até o mês seguinte, sem cobrança extra. Para resgatar, entre em claude.ai, abra **Configurações**, depois **Cobrança** e **Créditos de API**, vincule a organização do Console, gere uma chave em platform.claude.com e cole-a no Núcleo, em **Ajustes**, na seção **Nuvem**. Assinaturas do ChatGPT não incluem API.
+- **Tela cheia e ícone próprio.** F11 alterna a tela cheia. Rode `scripts\criar_atalho.bat` para ter o atalho com ícone na área de trabalho e no menu Iniciar, sem janela de console.
+
 ## Novidades da 0.11
 
 - **Sincronização entre aparelhos:** PC, notebook, tablet e iPhone com a mesma memória. Um computador é o central; o notebook sincroniza; tablet e iPhone acessam pelo navegador (PWA). A troca é criptografada com a sua frase secreta e roda na sua rede. Veja `documentos/APARELHOS.md`.

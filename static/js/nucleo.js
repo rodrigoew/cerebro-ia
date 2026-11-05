@@ -154,10 +154,7 @@ async function carregarNucleo(){
   if (!nucleo.iniciado){
     nucleo.iniciado = true;
     const nome = estado.cfg && estado.cfg.nome ? estado.cfg.nome : "";
-    document.getElementById("n-feed").append(h("div",{class:"n-boas"},
-      h("h1",{}, `Pronto${nome ? ", "+nome : ""}. O que vamos resolver?`),
-      h("p",{}, "Anote ideias e decisões, pergunte sobre agenda, contas ou o que você combinou com alguém. "
-        + "Tudo é respondido com os dados deste computador. O Claude só entra quando você pedir e aprovar o envio.")));
+    document.getElementById("n-feed").append(h("p",{class:"g-vazio"}, "As conversas desta sessão aparecem aqui."));
     const sugestoes = ["minhas pendências","o que tenho hoje?","quanto falta pagar este mês?","prepara minha próxima reunião",
       "alguma novidade de segurança importante?","verifica se tem atualizações","como está o computador?","organiza: …","preciso decidir entre…","ideia: …","me lembra de… amanhã às 9h","bom dia (briefing narrado)"];
     document.getElementById("n-chips").replaceChildren(...sugestoes.map(s => h("button",{onclick:()=>{
@@ -166,9 +163,12 @@ async function carregarNucleo(){
       else pedir(s);
     }}, s)));
   }
+  carregarFoco();
   try {
     const info = await api("/api/cerebro/estado");
     nucleo.info = info;
+    document.getElementById("b-lembretes").textContent = info.lembretes.length || "";
+    document.getElementById("b-novidades").textContent = info.artigos.length || "";
     document.getElementById("n-envios-mes").textContent = info.envios_mes;
     document.getElementById("n-aprendizados").textContent = info.aprendizados;
     const ia = info.ia, caixaIA = document.getElementById("n-ia");
@@ -189,6 +189,7 @@ async function carregarNucleo(){
                            : `Tudo atualizado (${at.quando.slice(8,10)}/${at.quando.slice(5,7)}). `,
                 n ? h("button",{class:"n-mini", onclick:()=>pedir("verifica se tem atualizações")}, "Ver e instalar") : null]; })()));
     document.getElementById("n-conversa").disabled = !vs.ouvir;
+    document.getElementById("b-status").classList.toggle("off", falta);
     const fontesOk = info.fontes_ultima ? `atualizadas ${info.fontes_ultima.slice(8,10)}/${info.fontes_ultima.slice(5,7)} às ${info.fontes_ultima.slice(11,16)}` : "ainda não coletadas";
     document.getElementById("n-novidades-titulo").textContent = `Novidades da internet, ${fontesOk}` + (info.fontes_com_erro ? ` (${info.fontes_com_erro} com erro)` : "");
     document.getElementById("n-novidades").replaceChildren(...(info.artigos.length ? info.artigos.map(a => h("li",{onclick:ev=>ev.currentTarget.classList.toggle("aberto")},
@@ -219,6 +220,8 @@ async function pedir(texto, opcoes = {}){
   feed.append(h("div",{class:"n-eu"}, texto)); rolarFeed();
   document.getElementById("n-input").value = "";
   estadoNucleo("analisando");
+  palcoPergunta(texto);
+  if (voz) legenda("Você", texto);
   let vivo = null, pVivo = null, bruto = "", buffer = "";
   if (voz) interromperFala();
   const g = fala.geracao;
@@ -227,6 +230,8 @@ async function pedir(texto, opcoes = {}){
     if (r.tipo === "briefing"){ if (vivo) vivo.remove(); feed.append(h("div",{class:"n-resp"}, h("span",{class:"selo"}, h("i"), "Briefing"), h("p",{}, "Abrindo o briefing do dia."))); rolarFeed(); iniciarBriefing(); return; }
     const cartao = cartaoResposta(r, {semDigitacao: !!vivo});
     if (vivo) vivo.replaceWith(cartao); else feed.append(cartao);
+    palcoFinal(r, !!vivo);
+    if (!voz) legenda("", "");
     rolarFeed(); aplicarNivel(r);
     if (r.tipo === "nota" || r.acao) carregarNucleo();
     if (voz){ if (vivo){ if (buffer.trim()) enfileirarFala(buffer, g); } else falarCartao(r); }
@@ -246,10 +251,12 @@ async function pedir(texto, opcoes = {}){
         const ev = JSON.parse(linha);
         if (ev.evento === "inicio"){
           pVivo = h("div",{class:"txt-vivo"});
-          vivo = h("div",{class:"n-resp ao-vivo","data-nivel":"normal"}, h("span",{class:"selo"}, h("i"), `IA local (${ev.modelo}), escrevendo…`), pVivo);
-          feed.append(vivo); rolarFeed(); emitirOnda(humor.base);
+          const rotuloVivo = ev.origem === "nuvem" ? `${ev.modelo} (automático${ev.sem_dados_pessoais ? ", sem dados seus" : ""}), escrevendo…` : `IA local (${ev.modelo}), escrevendo…`;
+          vivo = h("div",{class:"n-resp ao-vivo","data-nivel":ev.origem === "nuvem" ? "nuvem" : "normal"}, h("span",{class:"selo"}, h("i"), rotuloVivo), pVivo);
+          if (ev.origem === "nuvem"){ definirHumor("nuvem", 6000); }
+          feed.append(vivo); rolarFeed(); emitirOnda(humor.base); palcoAoVivo(rotuloVivo);
         } else if (ev.evento === "texto"){
-          bruto += ev.texto; pVivo.textContent = bruto; rolarFeed();
+          bruto += ev.texto; pVivo.textContent = bruto; rolarFeed(); palcoTexto(bruto);
           if (voz){ buffer += ev.texto;
             const m = buffer.match(/^([\s\S]*?[.!?…:])(\s+|$)/);
             if (m && m[1].length > 18){ enfileirarFala(m[1], g); buffer = buffer.slice(m[0].length); } }
@@ -259,14 +266,17 @@ async function pedir(texto, opcoes = {}){
     }
   } catch(err){
     if (vivo) vivo.remove();
-    feed.append(cartaoResposta({tipo:"erro", titulo:err.message, linhas:[], itens:[], local:true})); estadoNucleo(estadoOcioso());
+    const erro = {tipo:"erro", titulo:err.message, linhas:[], itens:[], local:true};
+    feed.append(cartaoResposta(erro)); palcoFinal(erro, false); estadoNucleo(estadoOcioso());
   }
 }
 function cartaoResposta(r, opc = {}){
   const selo = r.tipo === "erro" ? h("span",{class:"selo"}, h("i",{style:"background:var(--n-brasa);box-shadow:none"}), "Aviso")
     : r.tipo === "ia_local" ? h("span",{class:"selo"}, h("i"), `IA local (${r.modelo}), sem internet`)
     : r.local ? h("span",{class:"selo"}, h("i"), "Respondido localmente")
-    : h("span",{class:"selo"}, h("i"), `Resposta do Claude. Enviado: ${r.envio.trechos} trecho(s), ${r.envio.caracteres} caracteres, ${r.envio.mascarados} dado(s) mascarado(s)`);
+    : h("span",{class:"selo"}, h("i"), r.automatico
+        ? `${r.provedor} (automático)${r.envio.sem_dados_pessoais ? ", sem nenhum dado seu" : `, ${r.envio.mascarados} dado(s) mascarado(s)`}`
+        : `Resposta do ${r.provedor || "Claude"}. Enviado: ${r.envio.trechos} trecho(s), ${r.envio.caracteres} caracteres, ${r.envio.mascarados} dado(s) mascarado(s)`);
   let itens = r.itens.length ? h("div",{class:"n-itens"}, r.itens.map((i,k) => h("div",{class:"n-item"+(i.alerta?" alerta":""), style:`--i:${k}`},
     h("b",{}, i.titulo), i.valor ? h("span",{class:"v"}, i.valor) : h("span"),
     i.meta ? h("small",{}, i.meta) : null, i.trecho ? h("span",{class:"tr"}, i.trecho) : null))) : null;
@@ -324,7 +334,7 @@ function cartaoResposta(r, opc = {}){
     }
     return cartao;
   }
-  if (r.abrir) botoes.append(h("button",{class:"n-btn", onclick:()=>{ if (r.abrir.tela === "mente"){ if (r.abrir.aba === "decisoes") mt.decisao = r.abrir.id; irPara("mente"); carregarMente(r.abrir.aba); } else irPara(r.abrir.tela); }}, "Abrir em Mente"));
+  if (r.abrir) botoes.append(h("button",{class:"n-btn", onclick:()=>{ if (r.abrir.tela === "mente"){ if (r.abrir.aba === "decisoes") mt.decisao = r.abrir.id; irPara("mente"); carregarMente(r.abrir.aba); } else irPara(r.abrir.tela); }}, ({mente:"Abrir em Mente", pessoas:"Abrir em Pessoas", emails:"Abrir em E-mails", financeiro:"Abrir no Financeiro"})[r.abrir.tela] || "Abrir"));
   const conf = r.confianca ? h("span",{class:"n-conf "+r.confianca.nivel, title:r.confianca.motivo}, `confiança ${({alta:"alta",media:"média",baixa:"baixa"})[r.confianca.nivel]}`) : null;
   const linhasEl = r.linhas.map(l => { const p = h("p",{}); if (["ia_local","claude"].includes(r.tipo) && !opc.semDigitacao) revelarTexto(p, l); else p.textContent = l; return p; });
   const seloFinal = conf ? h("span",{class:"selo"}, ...selo.childNodes, conf) : selo;
@@ -474,7 +484,7 @@ function enfileirarFala(frase, g){
     const u = new SpeechSynthesisUtterance(frase); u.voice = v; u.lang = v.lang; u.rate = 1.05; speechSynthesis.speak(u); return;
   }
   garantirAudio();
-  filaFala.itens.push({g, audio: baixarAudio(frase)});
+  filaFala.itens.push({g, frase, audio: baixarAudio(frase)});
   if (!filaFala.tocando) tocarFila();
 }
 async function tocarFila(){
@@ -482,13 +492,15 @@ async function tocarFila(){
   while (filaFala.itens.length){
     const it = filaFala.itens.shift();
     if (it.g !== fala.geracao) continue;
-    try { const buf = await it.audio; if (it.g === fala.geracao) await tocar(buf, it.g); } catch(e){}
+    try { const buf = await it.audio; if (it.g === fala.geracao){ legenda(nomeAssist(), it.frase); await tocar(buf, it.g); } } catch(e){}
   }
-  filaFala.tocando = false; nucleo.nivel = 0; estadoNucleo(estadoOcioso());
+  filaFala.tocando = false; nucleo.nivel = 0; estadoNucleo(estadoOcioso()); legenda("", "");
 }
 async function falar(texto){
   interromperFala();
   const g = fala.geracao;
+  legenda(nomeAssist(), texto.length > 160 ? texto.slice(0, 157) + "…" : texto);
+  setTimeout(() => { if (g === fala.geracao && !filaFala.tocando) legenda("", ""); }, Math.max(4000, texto.length * 70));
   if (!temPiper()){
     const v = vozLocal(); if (!v){ avisar("Nenhuma voz instalada. Use o instalador para baixar a voz Piper."); return; }
     const u = new SpeechSynthesisUtterance(texto); u.voice = v; u.lang = v.lang; u.rate = 1.05;

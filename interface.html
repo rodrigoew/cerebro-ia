@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Núcleo</title>
+<link rel="icon" href="/static/icone.png">
+<link rel="apple-touch-icon" href="/static/icone-192.png">
 <link rel="stylesheet" href="/static/estilo.css">
 </head>
 <body>
@@ -30,32 +32,42 @@
 
 <main class="area">
   <section class="tela ativa" id="tela-hoje" aria-label="Hoje"></section>
-  <section class="tela nucleo" id="tela-nucleo" aria-label="Núcleo">
-    <button class="n-btn n-paineis-btn" id="n-paineis" onclick="alternarPaineis()">Painéis</button>
-    <div class="n-col esquerda">
-      <div class="n-nucleo">
+  <section class="tela nucleo palco" id="tela-nucleo" aria-label="Núcleo">
+    <button class="p-icone p-menu" id="p-menu" aria-label="Abrir menu" title="Menu">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <div class="p-topo-dir">
+      <button class="p-icone" id="p-busca" aria-label="Buscar (Ctrl+K)" title="Buscar (Ctrl+K)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      </button>
+      <button class="p-icone" id="p-telacheia" aria-label="Tela cheia (F11)" title="Tela cheia (F11)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      </button>
+    </div>
+
+    <div class="p-centro" id="p-centro">
+      <div class="p-orbe">
         <canvas id="n-canvas" width="520" height="520" aria-hidden="true"></canvas>
         <div class="n-estado" id="n-estado">Em espera</div>
         <div class="n-sub" id="n-sub">Tudo é analisado neste computador.</div>
         <div class="n-humor" id="n-humor" data-humor="normal"><i></i><span>Tudo em ordem</span></div>
         <div class="n-motivos" id="n-motivos"></div>
       </div>
-      <div class="n-ia" id="n-ia"><i></i><span>Verificando a IA local…</span></div>
-      <div class="n-priv tres-col">
-        <div><b id="n-local">0</b><span>respostas locais</span></div>
-        <div><b id="n-aprendizados">0</b><span>aprendizados</span></div>
-        <div><b id="n-envios-mes">0</b><span>envios ao Claude</span></div>
-      </div>
-      <div class="n-painel" style="flex:1;min-height:0;display:flex;flex-direction:column">
-        <h2>Lembretes</h2>
-        <ul class="n-lista" id="n-lembretes"></ul>
+      <div class="p-palco" id="p-palco" aria-live="polite">
+        <div class="p-inicio" id="p-inicio">
+          <h1 class="p-saudacao" id="p-saudacao">Olá.</h1>
+          <p class="p-pergunta">O que você quer ver agora?</p>
+          <div class="p-foco" id="p-foco"></div>
+        </div>
+        <div class="p-cartao" id="p-cartao" hidden></div>
       </div>
     </div>
-    <div class="n-col">
-      <div class="n-feed" id="n-feed" aria-live="polite"></div>
-      <div class="n-chips" id="n-chips"></div>
+
+    <div class="p-legenda" id="p-legenda" aria-live="polite"></div>
+
+    <div class="p-barra">
       <div class="n-comando">
-        <input id="n-input" autocomplete="off" placeholder="Pergunte, anote ou peça algo…  (Ctrl+Shift+K)" aria-label="Pedido ao Núcleo">
+        <input id="n-input" autocomplete="off" placeholder="Fale ou escreva…  (Ctrl+Shift+K)" aria-label="Pedido ao Núcleo">
         <button class="n-mic" id="n-mic" aria-label="Falar" title="Falar (transcrição local)">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
         </button>
@@ -67,20 +79,49 @@
         </button>
       </div>
     </div>
-    <div class="n-col direita">
-      <div class="n-painel"><h2>Mapa da memória</h2><canvas id="n-mapa" aria-label="Pessoas e projetos ligados na memória"></canvas></div>
-      <div class="n-painel" style="flex:1;min-height:0;display:flex;flex-direction:column">
-        <h2 id="n-novidades-titulo">Novidades da internet</h2><ul class="n-lista n-novidades" id="n-novidades"></ul>
-      </div>
-      <div class="n-painel" style="max-height:180px;display:flex;flex-direction:column">
-        <h2>Anotado recentemente</h2><ul class="n-lista" id="n-notas"></ul>
-      </div>
+
+    <nav class="p-abas" aria-label="Painéis">
+      <button data-gaveta="conversa" title="Conversa"><span>Conversa</span><b id="b-conversa"></b></button>
+      <button data-gaveta="lembretes" title="Lembretes e notas"><span>Lembretes</span><b id="b-lembretes"></b></button>
+      <button data-gaveta="novidades" title="Novidades da internet"><span>Novidades</span><b id="b-novidades"></b></button>
+      <button data-gaveta="memoria" title="Memória"><span>Memória</span></button>
+      <button data-gaveta="status" title="Status da IA e da voz"><span>Status</span><i id="b-status"></i></button>
+    </nav>
+
+    <aside class="p-gaveta" id="g-conversa" aria-label="Conversa">
+      <div class="g-topo"><h2>Conversa</h2><button class="p-icone g-fechar" aria-label="Fechar">×</button></div>
+      <div class="n-feed" id="n-feed"></div>
+      <h3 class="g-sub">Experimente</h3>
+      <div class="n-chips" id="n-chips"></div>
+    </aside>
+    <aside class="p-gaveta" id="g-lembretes" aria-label="Lembretes">
+      <div class="g-topo"><h2>Lembretes</h2><button class="p-icone g-fechar" aria-label="Fechar">×</button></div>
+      <ul class="n-lista" id="n-lembretes"></ul>
+      <h3 class="g-sub">Anotado recentemente</h3>
+      <ul class="n-lista" id="n-notas"></ul>
+    </aside>
+    <aside class="p-gaveta" id="g-novidades" aria-label="Novidades">
+      <div class="g-topo"><h2 id="n-novidades-titulo">Novidades da internet</h2><button class="p-icone g-fechar" aria-label="Fechar">×</button></div>
+      <ul class="n-lista n-novidades" id="n-novidades"></ul>
+    </aside>
+    <aside class="p-gaveta" id="g-memoria" aria-label="Memória">
+      <div class="g-topo"><h2>Mapa da memória</h2><button class="p-icone g-fechar" aria-label="Fechar">×</button></div>
+      <canvas id="n-mapa" aria-label="Pessoas e projetos ligados na memória"></canvas>
       <div class="n-atalhos">
         <button class="n-btn" id="n-abrir-conhecimento">O que sei de você</button>
         <button class="n-btn" id="n-abrir-fontes">Fontes e envios</button>
         <button class="n-btn" id="n-abrir-acoes">Ações</button>
       </div>
-    </div>
+    </aside>
+    <aside class="p-gaveta" id="g-status" aria-label="Status">
+      <div class="g-topo"><h2>Status</h2><button class="p-icone g-fechar" aria-label="Fechar">×</button></div>
+      <div class="n-ia" id="n-ia"><i></i><span>Verificando a IA local…</span></div>
+      <div class="n-priv tres-col">
+        <div><b id="n-local">0</b><span>respostas locais</span></div>
+        <div><b id="n-aprendizados">0</b><span>aprendizados</span></div>
+        <div><b id="n-envios-mes">0</b><span>envios à nuvem</span></div>
+      </div>
+    </aside>
   </section>
 
 
@@ -190,6 +231,7 @@
 <script src="/static/js/primeiros_passos.js"></script>
 <script src="/static/js/busca.js"></script>
 <script src="/static/js/pessoas.js"></script>
+<script src="/static/js/palco.js"></script>
 <script src="/static/js/inicio.js"></script>
 </body>
 </html>

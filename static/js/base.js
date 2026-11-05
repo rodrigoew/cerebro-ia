@@ -4,7 +4,7 @@ const TOKEN = "";   // a autenticação vai pelo cookie httpOnly; o X-Token só 
 const MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 const DSEM = ["dom","seg","ter","qua","qui","sex","sáb"];
 const BRL = new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
-const estado = {cfg:null, tela:"hoje", agVista:"semana", agRef:new Date(), agOcultas:new Set(), agVenc:true,
+const estado = {cfg:null, tela:"nucleo", agVista:"semana", agRef:new Date(), agOcultas:new Set(), agVenc:true,
   finMes:null, finCarteira:"todas", finStatus:"pendentes", editando:null, tipoForm:"pagar"};
 
 /* ---------- utilidades ---------- */
@@ -62,6 +62,8 @@ function agoraNoFuso(){
 document.querySelectorAll(".nav button").forEach(b => b.addEventListener("click", () => irPara(b.dataset.tela)));
 function irPara(tela){
   estado.tela = tela;
+  document.body.classList.toggle("modo-palco", tela === "nucleo");
+  document.body.classList.remove("menu-aberto");
   document.querySelectorAll(".nav button").forEach(b => {
     if (b.dataset.tela === tela) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current");
   });

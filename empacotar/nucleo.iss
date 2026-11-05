@@ -12,6 +12,8 @@ OutputBaseFilename=Nucleo-{#Versao}-instalador
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=..\static\icone.ico
+UninstallDisplayIcon={app}\Nucleo.exe
 LicenseFile=..\documentos\LICENCA_DE_USO.md
 PrivilegesRequired=lowest
 [Languages]

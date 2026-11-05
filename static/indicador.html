@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Núcleo - indicador</title>
+<style>
+  html,body{margin:0;height:100%;background:transparent;overflow:hidden;font:12px/1.3 "Segoe UI",system-ui,sans-serif;color:#F1E7D2;user-select:none}
+  .caixa{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer}
+  canvas{width:118px;height:118px}
+  .rot{background:rgba(14,11,8,.82);border:1px solid rgba(217,168,69,.35);border-radius:12px;padding:3px 10px;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis}
+  .vigia{font-size:10.5px;color:#A89A80}
+</style>
+</head>
+<body>
+<div class="caixa" id="caixa" title="Clique para abrir o Núcleo">
+  <canvas id="cv" width="236" height="236" aria-hidden="true"></canvas>
+  <div class="rot" id="rot">Em espera</div>
+  <div class="vigia" id="vigia"></div>
+</div>
+<script src="/static/js/indicador.js"></script>
+</body>
+</html>

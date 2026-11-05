@@ -41,14 +41,18 @@ async function secoesExtrasAjustes(){
   }
   async function desenharNuvem(){
     const n = await api("/api/nuvem");
-    let prov = n.provedor;
+    let prov = n.provedor_aprofundar || n.provedor;
     const seg = h("div",{class:"segmento",role:"group"});
     const desenharSeg = () => seg.replaceChildren(...[["claude","Claude"],["openai","Compatível com OpenAI"]].map(([k,r]) => h("button",{"aria-pressed":String(prov===k), onclick:()=>{ prov = k; desenharSeg(); campos(); }}, r)));
     const area = h("div");
     const modeloC = h("input",{type:"text", value:n.modelo_claude}), chaveC = h("input",{type:"password", placeholder:n.chave_claude ? "Chave guardada (cole outra para trocar)" : "sk-ant-..."});
     const url = h("input",{type:"text", value:n.url_openai}), modeloO = h("input",{type:"text", value:n.modelo_openai}), rotulo = h("input",{type:"text", value:n.rotulo_openai, placeholder:"Nome exibido (ex.: GPT, OpenRouter)"});
     const chaveO = h("input",{type:"password", placeholder:n.chave_openai ? "Chave guardada (cole outra para trocar)" : "Chave da API"});
-    const politica = h("select",{}, h("option",{value:"sempre_perguntar", selected:n.politica==="sempre_perguntar"},"Perguntar antes de cada envio"), h("option",{value:"nunca", selected:n.politica==="nunca"},"Nunca enviar (100% local)"));
+    const politica = h("select",{}, h("option",{value:"sempre_perguntar", selected:n.politica==="sempre_perguntar"},"Permitir envios (conforme o roteamento abaixo)"), h("option",{value:"nunca", selected:n.politica==="nunca"},"Nunca enviar (100% local)"));
+    const roteamento = h("select",{},
+      h("option",{value:"perguntar", selected:n.roteamento==="perguntar"},"Manual: só quando eu clicar em Aprofundar"),
+      h("option",{value:"geral", selected:n.roteamento==="geral"},"Automático para perguntas gerais (sem nenhum dado meu)"),
+      h("option",{value:"total", selected:n.roteamento==="total"},"Automático total (meus dados vão mascarados)"));
     function campos(){ area.replaceChildren(...(prov === "claude"
       ? [h("div",{class:"linha2"}, h("div",{}, h("label",{class:"rot"},"Modelo"), modeloC), h("div",{}, h("label",{class:"rot"},"Chave da API"), chaveC))]
       : [h("label",{class:"rot"},"Endereço (base da API)"), url, h("div",{class:"linha2"}, h("div",{}, h("label",{class:"rot"},"Modelo"), modeloO), h("div",{}, h("label",{class:"rot"},"Nome exibido"), rotulo)),
@@ -63,10 +67,18 @@ async function secoesExtrasAjustes(){
       h("div",{class:"mostrar"},
         h("button",{class:"btn pequeno", onclick:async()=>{ try { const r = await api("/api/nuvem/freellmapi",{method:"POST",body:"{}"}); avisar(r.mensagem); await carregarEstado(); desenharNuvem(); } catch(err){ avisar(err.message); } }},"Usar FreeLLMAPI"),
         h("button",{class:"btn pequeno", onclick:async()=>{ try { const r = await api("/api/nuvem/testar",{method:"POST",body:"{}"}); avisar(r.mensagem); } catch(err){ avisar(err.message); } }},"Testar conexão")));
-    nuvemSec.replaceChildren(h("h2",{},"Nuvem (opcional)"), h("p",{class:"ajuda"},"Usada só quando você clica em Aprofundar, sempre com prévia e dados mascarados."), seg, area, fla,
+    const provAuto = h("select",{},
+      h("option",{value:"openai", selected:n.provedor_auto==="openai"},"FreeLLMAPI / compatível com OpenAI (grátis)"),
+      h("option",{value:"claude", selected:n.provedor_auto==="claude"},"Claude (usa o crédito da API)"));
+    nuvemSec.replaceChildren(h("h2",{},"Nuvem (opcional)"),
+      h("p",{class:"ajuda"},"Dois papéis: as respostas automáticas (perguntas gerais, sem dados seus) e o Aprofundar (quando você clica, com prévia e dados mascarados). Plano Claude Max: resgate o crédito mensal da API em claude.ai > Configurações > Cobrança > Créditos de API e cole a chave aqui."),
+      h("label",{class:"rot"},"Aprofundar (com prévia) usa"), seg, area, fla,
+      h("label",{class:"rot"},"Respostas automáticas usam"), provAuto,
       h("label",{class:"rot"},"Política de envio"), politica,
+      h("label",{class:"rot"},"Roteamento"), roteamento,
+      h("p",{class:"ajuda", style:"margin-top:6px"},"No automático, a IA local responde tudo que envolve seus e-mails, finanças e notas; perguntas gerais vão ao provedor escolhido. Se ele falhar, a IA local assume sozinha."),
       h("div",{class:"acoes-aj"}, h("button",{class:"btn primario", onclick:async()=>{
-        try { await api("/api/nuvem",{method:"POST",body:JSON.stringify({provedor:prov, modelo_claude:modeloC.value, url_openai:url.value, modelo_openai:modeloO.value, rotulo:rotulo.value, politica:politica.value})});
+        try { await api("/api/nuvem",{method:"POST",body:JSON.stringify({provedor:prov, modelo_claude:modeloC.value, url_openai:url.value, modelo_openai:modeloO.value, rotulo:rotulo.value, politica:politica.value, roteamento:roteamento.value, provedor_auto:provAuto.value})});
           if (prov === "claude" && chaveC.value) await api("/api/nuvem/chave",{method:"POST",body:JSON.stringify({provedor:"claude", chave:chaveC.value})});
           if (prov === "openai" && chaveO.value) await api("/api/nuvem/chave",{method:"POST",body:JSON.stringify({provedor:"openai", chave:chaveO.value})});
           avisar("Nuvem salva."); desenharNuvem(); } catch(err){ avisar(err.message); } }},"Salvar")));

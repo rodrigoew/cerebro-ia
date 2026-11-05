@@ -28,7 +28,12 @@ class Bandeja:
 
     # ------------------------------------------------------------ ícone
     def _imagem(self):
+        from pathlib import Path
         from PIL import Image, ImageDraw
+        import sys
+        arquivo = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)) / "static" / "icone.png"
+        if arquivo.exists():
+            return Image.open(arquivo).convert("RGBA").resize((64, 64))
         img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
         d.ellipse((4, 4, 60, 60), outline=(217, 168, 69, 255), width=4)

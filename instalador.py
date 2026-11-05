@@ -82,13 +82,29 @@ class Instalador:
     def detectar_hardware(self) -> None:
         """Escolhe os modelos pelo tamanho da placa de vídeo (e grava no config)."""
         vram = 0
-        if shutil.which("nvidia-smi"):
+        candidatos = [shutil.which("nvidia-smi"), r"C:\Windows\System32\nvidia-smi.exe",
+                      r"C:\Program Files\NVIDIA Corporation\NVSMI\nvidia-smi.exe"]
+        smi = next((c for c in candidatos if c and os.path.exists(c)), None)
+        if smi:
             try:
-                r = subprocess.run(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
+                r = subprocess.run([smi, "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
                                    capture_output=True, text=True, timeout=20)
-                nome, mem = r.stdout.strip().splitlines()[0].split(",")
+                linhas = [l for l in r.stdout.strip().splitlines() if "," in l]
+                melhor = max(linhas, key=lambda l: float(l.split(",")[-1]))     # notebooks com 2 placas: pega a maior
+                nome, mem = melhor.rsplit(",", 1)
                 vram = int(float(mem.strip()) / 1024 + 0.5)
                 self.registrar(f"Placa de vídeo: {nome.strip()} com {vram} GB.")
+            except Exception as erro:
+                self.registrar(f"Não consegui ler a placa de vídeo ({erro}).")
+        if not vram and platform.system() == "Windows":
+            try:   # sem nvidia-smi: pergunta ao Windows (o valor pode vir limitado a 4 GB)
+                r = subprocess.run(["powershell", "-NoProfile", "-Command",
+                                    "(Get-CimInstance Win32_VideoController | Where-Object {$_.Name -match 'NVIDIA'} | Select-Object -First 1).Name"],
+                                   capture_output=True, text=True, timeout=20)
+                nome = r.stdout.strip()
+                if nome:
+                    vram = 8 if any(x in nome for x in ("3070", "3080", "3090", "4060", "4070", "4080", "4090", "5070", "5080", "5090")) else 6
+                    self.registrar(f"Placa NVIDIA encontrada pelo Windows: {nome} (estimando {vram} GB).")
             except Exception:
                 pass
         if not vram:
@@ -118,6 +134,7 @@ class Instalador:
             self._modelos()
             self._vozes()
             self._whisper()
+            self._freellmapi()
             faltando = [k for k, v in self.componentes().items() if not v]
             if faltando:
                 self.registrar("Concluído com pendências: " + ", ".join(faltando) + ". Veja as mensagens acima.")
@@ -128,6 +145,58 @@ class Instalador:
         finally:
             self.rodando = False
             self.concluido = True
+
+    def _freellmapi(self) -> None:
+        """Instala e liga o roteador gratuito (uso pessoal), que fica dentro do projeto em vendor/freellmapi."""
+        fla = self.app.cfg.get("freellmapi", {})
+        if fla.get("instalar") is False or self.app.cfg.get("edicao") == "comercial":
+            return
+        base = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
+        pasta = base / fla.get("pasta", "vendor/freellmapi")
+        if not (pasta / "package.json").exists():
+            self.registrar("FreeLLMAPI: pasta vendor/freellmapi vazia. No terminal, rode: git submodule update --init")
+            return
+        self.registrar("Passo extra: FreeLLMAPI (modelos gratuitos na nuvem, para perguntas gerais).")
+        node = shutil.which("node") or (r"C:\Program Files\nodejs\node.exe" if os.path.exists(r"C:\Program Files\nodejs\node.exe") else None)
+        if not node and platform.system() == "Windows" and shutil.which("winget"):
+            self.registrar("Instalando o Node.js (necessário para o FreeLLMAPI)…")
+            subprocess.run(["winget", "install", "--id", "OpenJS.NodeJS.LTS", "-e", "--silent",
+                            "--accept-package-agreements", "--accept-source-agreements"], capture_output=True, timeout=900)
+            node = r"C:\Program Files\nodejs\node.exe" if os.path.exists(r"C:\Program Files\nodejs\node.exe") else shutil.which("node")
+        if not node:
+            self.registrar("FreeLLMAPI: não encontrei o Node.js. Instale o Node LTS em nodejs.org e rode o instalador de novo.")
+            return
+        env = {**os.environ, "PATH": str(Path(node).parent) + os.pathsep + os.environ.get("PATH", "")}
+        npm = str(Path(node).parent / ("npm.cmd" if platform.system() == "Windows" else "npm"))
+        if not os.path.exists(npm):
+            npm = shutil.which("npm") or "npm"
+        if not (pasta / "node_modules").exists():
+            self.registrar("FreeLLMAPI: baixando dependências (alguns minutos)…")
+            r = subprocess.run([npm, "ci"], cwd=str(pasta), env=env, capture_output=True, text=True, timeout=1800)
+            if r.returncode != 0:
+                r = subprocess.run([npm, "install"], cwd=str(pasta), env=env, capture_output=True, text=True, timeout=1800)
+            if r.returncode != 0:
+                self.registrar("FreeLLMAPI: falha ao baixar dependências. " + (r.stderr or "")[-300:])
+                return
+        self.registrar("FreeLLMAPI: compilando…")
+        r = subprocess.run([npm, "run", "build"], cwd=str(pasta), env=env, capture_output=True, text=True, timeout=1800)
+        if r.returncode != 0:
+            self.registrar("FreeLLMAPI: falha ao compilar. " + (r.stderr or "")[-300:])
+            return
+        cfg = self.app.cfg
+        cfg.setdefault("freellmapi", {}).update({"ativo": True, "iniciar_junto": True})
+        nv = cfg.setdefault("nuvem", {})
+        nv.setdefault("provedor_aprofundar", "claude")
+        nv.update({"provedor_auto": "openai", "url_openai": cfg["freellmapi"].get("url", "http://localhost:3001/v1"),
+                                            "modelo_openai": "auto", "rotulo": "FreeLLMAPI",
+                                            "roteamento": cfg.get("nuvem", {}).get("roteamento") if cfg.get("nuvem", {}).get("roteamento", "perguntar") != "perguntar" else "geral"})
+        try:
+            self.app.salvar_config()
+        except Exception:
+            pass
+        self.registrar(self.app.iniciar_freellmapi(forcar=True))
+        self.registrar("FreeLLMAPI pronto. Falta um passo seu, uma vez só: abra http://localhost:3001, crie a conta local, "
+                       "cadastre as chaves gratuitas (Google, Groq…) e cole a chave unificada em Ajustes > Nuvem.")
 
     def _pip(self, pacotes: list[str]) -> bool:
         cmd = [sys.executable, "-m", "pip", "install", "--upgrade", *pacotes]

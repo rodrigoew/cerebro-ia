@@ -88,7 +88,10 @@
     "provedor": "claude",
     "url_openai": "https://api.openai.com/v1",
     "modelo_openai": "gpt-4o-mini",
-    "rotulo": ""
+    "rotulo": "",
+    "roteamento": "perguntar",
+    "provedor_aprofundar": "claude",
+    "provedor_auto": "openai"
   },
   "microsoft": {
     "client_id": "",
@@ -262,7 +265,8 @@
     "ativo": false,
     "pasta": "vendor/freellmapi",
     "url": "http://localhost:3001/v1",
-    "iniciar_junto": true
+    "iniciar_junto": true,
+    "instalar": true
   },
   "bandeja": true,
   "fechar_para_bandeja": true,
@@ -290,5 +294,7 @@
     ],
     "desligados": []
   },
-  "acesso_lan": false
+  "acesso_lan": false,
+  "tela_cheia": true,
+  "indicador_flutuante": true
 }
