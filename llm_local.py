@@ -26,15 +26,58 @@ class LLMLocal:
         self.manter = c.get("manter_carregado", "30m")
         self._estado = (0.0, False, "")
         self._trava = threading.Lock()
+        # IA do aparelho central (ex.: o PC com placa maior), usada quando estiver na mesma rede
+        self.remoto = {"ativo": False, "url": "", "token": None}
+        self._remoto = (0.0, None)          # (quando verificou, estado do central ou None)
+
+    # ------------------------------------------------------------ IA do central pela rede
+    def _estado_remoto(self) -> dict | None:
+        r = self.remoto
+        if not (r.get("ativo") and r.get("url") and r.get("token")):
+            return None
+        agora = time.time()
+        if agora - self._remoto[0] < 30:
+            return self._remoto[1]
+        estado = None
+        try:
+            req = urllib.request.Request(r["url"].rstrip("/") + "/api/ia/estado", headers={"X-Sinc": r["token"]()})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                d = json.loads(resp.read())
+            estado = d if d.get("chat_ok") else None
+        except Exception:
+            estado = None
+        self._remoto = (agora, estado)
+        return estado
+
+    def _alvo(self) -> tuple[str, dict]:
+        """Para onde mandar: o central (se alcançável) ou o Ollama deste computador."""
+        if self._estado_remoto():
+            return self.remoto["url"].rstrip("/") + "/api/ia", {"X-Sinc": self.remoto["token"]()}
+        return self.url, {}
+
+    def _remoto_falhou(self) -> None:
+        self._remoto = (time.time(), None)
+
+    @property
+    def modelo_em_uso(self) -> str:
+        e = self._estado_remoto()
+        return f"{e['modelo']} do central" if e else self.modelo
 
     # ------------------------------------------------------------ disponibilidade
-    def _req(self, caminho: str, dados: dict | None = None, timeout: int = 120):
+    def _req(self, caminho: str, dados: dict | None = None, timeout: int = 120, local: bool = False):
         corpo = json.dumps(dados).encode() if dados is not None else None
-        req = urllib.request.Request(self.url + caminho, data=corpo,
-                                     headers={"Content-Type": "application/json"},
+        base, extra = (self.url, {}) if local else self._alvo()
+        req = urllib.request.Request(base + caminho, data=corpo,
+                                     headers={"Content-Type": "application/json", **extra},
                                      method="POST" if dados is not None else "GET")
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return json.loads(r.read())
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return json.loads(r.read())
+        except urllib.error.URLError:
+            if base != self.url:                 # o central sumiu da rede: tenta no próprio computador
+                self._remoto_falhou()
+                return self._req(caminho, dados, timeout, local=True)
+            raise
 
     def status(self, forcar: bool = False) -> dict:
         """Verifica o Ollama e se os modelos estão baixados (cache de 30 s)."""
@@ -43,7 +86,14 @@ class LLMLocal:
             if not forcar and agora - self._estado[0] < 30:
                 return self._estado[2]
         info = {"ativo": self.ativo, "online": False, "modelo": self.modelo,
-                "modelo_embedding": self.modelo_emb, "chat_ok": False, "emb_ok": False, "motivo": None}
+                "modelo_embedding": self.modelo_emb, "chat_ok": False, "emb_ok": False, "motivo": None, "central": False}
+        remoto = self._estado_remoto()
+        if remoto:
+            info.update(online=True, chat_ok=True, emb_ok=bool(remoto.get("emb_ok")), central=True,
+                        modelo=f"{remoto['modelo']} do central", modelo_embedding=remoto.get("modelo_embedding", self.modelo_emb))
+            with self._trava:
+                self._estado = (agora, True, info)
+            return info
         if not self.ativo:
             info["motivo"] = "IA local desligada no config."
         else:
@@ -119,10 +169,19 @@ class LLMLocal:
         dados = {"model": self.modelo, "stream": True, "keep_alive": self.manter, "think": False,
                  "messages": [{"role": "system", "content": sistema}] + mensagens,
                  "options": {"temperature": temperatura, "num_ctx": self.contexto, "num_predict": max_tokens}}
-        req = urllib.request.Request(self.url + "/api/chat", data=json.dumps(dados).encode(),
-                                     headers={"Content-Type": "application/json"})
+        base, extra = self._alvo()
+        req = urllib.request.Request(base + "/api/chat", data=json.dumps(dados).encode(),
+                                     headers={"Content-Type": "application/json", **extra})
         try:
-            resposta = urllib.request.urlopen(req, timeout=180)
+            try:
+                resposta = urllib.request.urlopen(req, timeout=180)
+            except urllib.error.URLError as erro:
+                if base == self.url or isinstance(erro, urllib.error.HTTPError):
+                    raise
+                self._remoto_falhou()            # central fora da rede: segue no próprio computador
+                req = urllib.request.Request(self.url + "/api/chat", data=json.dumps(dados).encode(),
+                                             headers={"Content-Type": "application/json"})
+                resposta = urllib.request.urlopen(req, timeout=180)
         except urllib.error.HTTPError as erro:
             if erro.code == 400:
                 dados.pop("think", None)

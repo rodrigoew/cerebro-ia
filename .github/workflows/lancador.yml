@@ -1,0 +1,49 @@
+# Gera o Nucleo.exe (lançador que se atualiza pelo Git) num Windows do GitHub e publica em Releases.
+# Roda sozinho quando o lançador muda, ou pelo botão "Run workflow" na aba Actions.
+name: Gerar Nucleo.exe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - lancador.py
+      - atualizador.py
+      - static/icone.ico
+      - .github/workflows/lancador.yml
+
+permissions:
+  contents: write
+
+jobs:
+  gerar:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar o PyInstaller
+        run: python -m pip install pyinstaller==6.11.1
+
+      - name: Gerar o executável
+        run: >
+          python -m PyInstaller --noconfirm --onefile --windowed --name Nucleo
+          --icon static/icone.ico --add-data "static/icone.ico;."
+          lancador.py
+
+      - name: Remover a versão anterior do lançador
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release delete lancador --yes --cleanup-tag
+
+      - name: Publicar em Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >
+          gh release create lancador dist/Nucleo.exe
+          --title "Nucleo.exe (lançador)"
+          --notes "Baixe uma vez e abra. Ele confere o GitHub, atualiza o Núcleo e abre o app. Em computador novo, prepara tudo sozinho."

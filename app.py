@@ -49,6 +49,7 @@ from pessoas import Pessoas
 from bandeja import Bandeja
 from sincronizar import Sincronizador
 from vigia import Vigia
+import atualizador
 import coletor as c
 from acoes import Acoes
 from aprendizado import Aprendizado
@@ -187,6 +188,8 @@ class Aplicativo:
         self._notificacoes: list[dict] = []
         self.sinc = Sincronizador(self)
         self.vigia = Vigia(self)
+        self.configurar_ia_remota()
+        self.atualizacao = None
         self.presenca = {"ativo": False, "estado": "espera", "nivel": 0.0, "humor": "normal", "legenda": "", "quando": 0}
         contas.oauth(cfg)
         self.rotina = {"ultima_volta": None, "coletando": False, "consolidando": False, "ultimo_erro": None}
@@ -417,6 +420,14 @@ class Aplicativo:
                 if c["direcao"] == "eu_devo" and c["prazo"] <= hoje.isoformat() and self._uma_vez(f"comp:{c['id']}:{hoje}"):
                     self.notificar("Compromisso", f"Você prometeu a {c['pessoa_nome'] or c['pessoa']}: {c['texto']}",
                                    "risco" if c["prazo"] < hoje.isoformat() else "atencao", "pessoas")
+
+    # ------------------------------------------------------------ IA do central (notebook usa a placa do PC)
+    def configurar_ia_remota(self) -> None:
+        sc = self.cfg.get("sincronizacao", {})
+        usar = sc.get("ativo") and sc.get("papel") == "cliente" and sc.get("servidor") and \
+            self.cfg.get("llm_local", {}).get("usar_central", True)
+        self.llm.remoto = {"ativo": bool(usar), "url": sc.get("servidor", ""), "token": self.sinc.token_servidor}
+        self.llm._remoto = (0.0, None)
 
     # ------------------------------------------------------------ foco do momento (tela inicial)
     def foco(self) -> list[dict]:
@@ -704,6 +715,28 @@ class Aplicativo:
             self.verificar_notificacoes()
         except Exception as erro:
             self.rotina["ultimo_erro"] = f"compromissos/notificações: {erro}"[:200]
+        # sincronização automática com o aparelho central (a cada volta da rotina, ~1 min)
+        try:
+            sc = self.cfg.get("sincronizacao", {})
+            if sc.get("ativo") and sc.get("papel") == "cliente" and sc.get("automatico", True):
+                ultima = self.aprendizado.ler_estado("sinc_ultima", "")
+                if not ultima or (agora - dt.datetime.fromisoformat(ultima)).total_seconds() >= 300:
+                    self.aprendizado.gravar_estado("sinc_ultima", agora.isoformat())
+                    self.sinc.sincronizar_agora()
+        except Exception as erro:
+            self.rotina["ultimo_erro"] = f"sincronização: {erro}"[:200]
+        # versão nova no GitHub (a cada 6 h), com aviso
+        try:
+            ultima = self.aprendizado.ler_estado("verif_atualizacao", "")
+            if not ultima or (agora - dt.datetime.fromisoformat(ultima)).total_seconds() > 6 * 3600:
+                self.aprendizado.gravar_estado("verif_atualizacao", agora.isoformat())
+                info = atualizador.verificar(AQUI)
+                self.atualizacao = info
+                if info["disponivel"] and self._uma_vez(f"versao:{info['versao_remota']}"):
+                    self.notificar("Nova versão do Núcleo", f"A versão {info['versao_remota']} está disponível. "
+                                   "Atualize em Ajustes ou abrindo pelo atalho.", "normal", "ajustes")
+        except Exception:
+            pass
         # verificação diária de atualizações (e as automáticas que você aprovou)
         try:
             self.acoes.rotina_atualizacoes()
@@ -1081,7 +1114,8 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                 self._json(403, {"erro": "Host não permitido."})
                 return False
             protegido = self.path.startswith("/api/") and self.path not in ("/api/ping",) \
-                and not self.path.startswith("/api/imagem/") and self.path != "/api/sinc/trocar"
+                and not self.path.startswith("/api/imagem/") and self.path != "/api/sinc/trocar" \
+                and not self.path.startswith("/api/ia/")
             apresentado = self.headers.get("X-Token", "") or self._cookie("nucleo_token")
             if protegido and not secrets.compare_digest(apresentado, token):
                 limite[ip] = limite.get(ip, 0) + 1
@@ -1101,6 +1135,9 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
 
         def do_GET(self):
             if not self._autorizado():
+                return
+            if self.path.startswith("/api/ia/"):
+                self._ia_central()
                 return
             url = urlparse(self.path)
             q = {k: v[0] for k, v in parse_qs(url.query).items()}
@@ -1211,6 +1248,10 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                                      "processos": app.mente.processos()})
                 elif url.path == "/api/licenca":
                     self._json(200, app.licenca.status())
+                elif url.path == "/api/atualizacao":
+                    if q.get("verificar") or app.atualizacao is None:
+                        app.atualizacao = atualizador.verificar(AQUI)
+                    self._json(200, {**app.atualizacao, "versao_local": VERSAO})
                 elif url.path == "/api/foco":
                     self._json(200, {"foco": app.foco()})
                 elif url.path == "/api/presenca":
@@ -1227,7 +1268,9 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                     self.end_headers()
                     self.wfile.write(corpo)
                 elif url.path == "/api/sinc":
-                    self._json(200, {**app.sinc.cfg, "ultimo": app.sinc.ultimo, "tem_frase": bool(app.sinc.frase()), "este_ip": _ip_local()})
+                    self._json(200, {**app.sinc.cfg, "ultimo": app.sinc.ultimo, "tem_frase": bool(app.sinc.frase()), "este_ip": _ip_local(),
+                                     "usar_central": app.cfg.get("llm_local", {}).get("usar_central", True),
+                                     "ia_central": app.llm.status().get("central", False)})
                 elif url.path == "/api/busca":
                     self._json(200, {"resultados": app.busca_global(q.get("q", ""))})
                 elif url.path == "/api/pessoas":
@@ -1296,6 +1339,52 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                 traceback.print_exc()
                 self._json(500, {"erro": str(erro)})
 
+        def _ia_central(self) -> bool:
+            """Atende a IA para os seus outros aparelhos. Só no central, só com a frase secreta."""
+            sc = app.cfg.get("sincronizacao", {})
+            if not (sc.get("ativo") and sc.get("papel", "central") == "central" and app.sinc.frase()):
+                self._json(403, {"erro": "Este aparelho não é o central."})
+                return True
+            if not secrets.compare_digest(self.headers.get("X-Sinc", ""), app.sinc.token_servidor()):
+                self._json(403, {"erro": "Frase de sincronização incorreta."})
+                return True
+            caminho = urlparse(self.path).path[len("/api/ia"):]
+            if caminho == "/estado":
+                st = app.llm.status()
+                self._json(200, {"chat_ok": st.get("chat_ok") and not st.get("central"), "emb_ok": st.get("emb_ok"),
+                                 "modelo": app.llm.modelo, "modelo_embedding": app.llm.modelo_emb})
+                return True
+            if caminho not in ("/api/tags", "/api/chat", "/api/embed", "/api/embeddings"):   # nada de pull/delete
+                self._json(404, {"erro": "Não permitido."})
+                return True
+            corpo = None
+            if self.command == "POST":
+                dados = self._corpo()
+                if "messages" in dados:
+                    dados["model"] = app.llm.modelo           # usa o modelo forte do central
+                elif "input" in dados or "prompt" in dados:
+                    dados["model"] = app.llm.modelo_emb
+                corpo = json.dumps(dados).encode()
+            req = urllib.request.Request(app.llm.url + caminho, data=corpo, headers={"Content-Type": "application/json"},
+                                         method=self.command)
+            try:
+                resp = urllib.request.urlopen(req, timeout=300)
+            except urllib.error.HTTPError as erro:
+                self._json(erro.code, {"erro": "A IA do central recusou o pedido."})
+                return True
+            except urllib.error.URLError:
+                self._json(503, {"erro": "A IA do central não está rodando."})
+                return True
+            with resp:
+                self.send_response(200)
+                self.send_header("Content-Type", resp.headers.get("Content-Type", "application/json"))
+                self.send_header("Connection", "close")
+                self.end_headers()
+                for linha in resp:                  # repassa em fluxo, linha a linha
+                    self.wfile.write(linha)
+                    self.wfile.flush()
+            return True
+
         def _bloqueado(self) -> bool:
             livres = ("/api/licenca", "/api/ajustes", "/api/instalar", "/api/ping", "/api/estado", "/api/nuvem")
             caminho = urlparse(self.path).path
@@ -1305,7 +1394,12 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
             return True
 
         def do_POST(self):
-            if not self._autorizado() or self._bloqueado():
+            if not self._autorizado():
+                return
+            if self.path.startswith("/api/ia/"):
+                self._ia_central()
+                return
+            if self._bloqueado():
                 return
             url = urlparse(self.path)
             try:
@@ -1473,6 +1567,18 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                     self._json(200, {"mensagem": agendar(horario, app.caminho_cfg, retornar=True)})
                 elif url.path == "/api/acoes/confirmar":
                     self._json(200, app.acoes.confirmar(str(self._corpo().get("token", ""))))
+                elif url.path == "/api/atualizacao/aplicar":
+                    python, pythonw = atualizador.python_do_projeto()
+                    r = atualizador.atualizar(AQUI, print, python or sys.executable)
+                    self._json(200, r)
+                    if r.get("atualizou"):
+                        def reiniciar():
+                            time.sleep(1.0)
+                            exe = pythonw or sys.executable
+                            subprocess.Popen([exe, str(AQUI / "app.py"), "--reiniciado"], cwd=str(AQUI),
+                                             creationflags=0x08000000 if platform.system() == "Windows" else 0)
+                            os._exit(0)
+                        threading.Thread(target=reiniciar, daemon=True).start()
                 elif url.path == "/api/presenca":
                     corpo = self._corpo()
                     for k in ("ativo", "estado", "humor", "legenda"):
@@ -1497,7 +1603,10 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                     for k in ("ativo", "papel", "servidor", "automatico"):
                         if k in corpo:
                             sc[k] = corpo[k]
+                    if "usar_central" in corpo:
+                        app.cfg.setdefault("llm_local", {})["usar_central"] = bool(corpo["usar_central"])
                     app.salvar_config()
+                    app.configurar_ia_remota()
                     self._json(200, {"ok": True})
                 elif url.path == "/api/rede":
                     app.cfg["acesso_lan"] = bool(self._corpo().get("ativo"))
@@ -1947,6 +2056,7 @@ def main() -> None:
     ap.add_argument("--salvar-senha", metavar="APELIDO")
     ap.add_argument("--salvar-chave-claude", action="store_true")
     ap.add_argument("--instalar", action="store_true", help="instala Ollama, modelos e voz")
+    ap.add_argument("--reiniciado", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--testar", action="store_true")
     ap.add_argument("--agendar", metavar="HH:MM")
     ap.add_argument("--sem-janela", action="store_true", help="só o servidor")
@@ -1961,6 +2071,11 @@ def main() -> None:
         modelo["primeiro_uso"] = True
         caminho.write_text(json.dumps(modelo, ensure_ascii=False, indent=2), encoding="utf-8")
     cfg = c.carregar_config(caminho)
+    if args.reiniciado:                      # depois de uma atualização: espera a versão anterior fechar
+        for _ in range(40):
+            if porta_livre(int(cfg.get("porta", 8765))):
+                break
+            time.sleep(0.25)
     if args.salvar_senha:
         return c.salvar_senha(cfg, args.salvar_senha)
     if args.salvar_chave_claude:

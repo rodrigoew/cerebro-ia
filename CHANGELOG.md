@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 0.13.0
+- Nucleo.exe: lançador único que confere o GitHub a cada abertura, atualiza com segurança (só avança, nunca apaga trabalho seu) e abre o app sem console. Em computador novo, instala Git e Python, baixa o projeto, instala tudo e cria o atalho.
+- O GitHub gera o Nucleo.exe sozinho (GitHub Actions) e publica em Releases.
+- Aviso de versão nova e botão "Atualizar e reiniciar" em Ajustes.
+- O notebook usa a IA do PC quando estiver na mesma rede (pedidos autenticados pela frase secreta; só conversa e busca), e volta para a própria IA fora de casa.
+- Sincronização automática a cada 5 minutos no aparelho secundário.
+- Ajustes: seção "Acesso na rede" e "Atualizações".
+- Placas de 12 GB passam a usar o qwen3:8b (o 14b só a partir de 16 GB).
+
 ## 0.12.0
 - Nova tela inicial em palco, em tela cheia: o núcleo no centro pergunta o que você quer ver e mostra só o que importa agora; a resposta surge do núcleo em destaque; conversa, lembretes, novidades, memória e status ficam recolhidos em abas.
 - Legenda na tela com o que você disse e o que o assistente está falando.

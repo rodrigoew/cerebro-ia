@@ -13,6 +13,12 @@ Telas:
 
 Na primeira vez, um assistente de **primeiros passos** pergunta seu nome, o nome do assistente, a voz e a cidade, e depois instala a IA local.
 
+## Novidades da 0.13
+
+- **Nucleo.exe, sem mais .bat.** Baixe uma vez em github.com/rodrigoew/cerebro-ia, na aba **Releases**, item "Nucleo.exe (lançador)", e abra. A cada abertura, ele confere se há versão nova no GitHub, atualiza (código, dependências e FreeLLMAPI, só quando mudam) e abre o app. Na primeira vez, ele cria o atalho "Núcleo". Em um computador novo, prepara tudo sozinho. Se você tiver alterações no código ainda não enviadas, ele não atualiza e avisa.
+- **Atualizar sem fechar:** em **Ajustes**, na seção **Atualizações**, aparece a versão nova e o botão "Atualizar e reiniciar". O app também avisa sozinho.
+- **O notebook usa a IA do PC.** Em **Ajustes > Seus aparelhos**, com o notebook como Secundário, marque "Usar a IA do central". Em casa, ele responde com o modelo do PC; fora, volta para o próprio. Os pedidos passam pelo Núcleo do PC, autenticados pela frase secreta; o Ollama nunca fica exposto na rede.
+
 ## Novidades da 0.12
 
 - **Tela inicial em palco, em tela cheia.** O núcleo fica no centro, cumprimenta você e pergunta o que você quer ver agora, mostrando só os atalhos que importam no momento (contas, promessas, e-mails, agenda, briefing), do mais urgente ao menos. A resposta surge do núcleo e ocupa o palco. Esc volta ao início. Conversa, lembretes, novidades, memória e status ficam recolhidos nas abas da direita.

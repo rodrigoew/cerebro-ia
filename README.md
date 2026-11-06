@@ -16,6 +16,10 @@ O guia completo de uso está em [LEIAME.md](LEIAME.md).
 └── documentos/                  licença de uso, privacidade, terceiros, como vender
 ```
 
+## Abrir e atualizar
+
+Baixe o **Nucleo.exe** em Releases e abra. Ele atualiza pelo Git e abre o app a cada uso. O próprio GitHub gera o executável pelo `.github/workflows/lancador.yml`.
+
 ## Clonar em outro computador
 
 ```

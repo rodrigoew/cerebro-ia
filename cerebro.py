@@ -646,7 +646,7 @@ class Nucleo:
             return
         prep = r["_prep"]
         fontes = prep["fontes"]
-        yield {"evento": "inicio", "modelo": self.llm.modelo, "fontes": len(fontes)}
+        yield {"evento": "inicio", "modelo": self.llm.modelo_em_uso, "fontes": len(fontes)}
         partes = []
         try:
             for pedaco in self.llm.conversar_fluxo(prep["mensagens"], prep["sistema"],
@@ -1306,7 +1306,7 @@ class Nucleo:
         r = self._r("ia_local", "", linhas=[p for p in resposta.split("\n") if p.strip()], itens=itens,
                     pode_enviar=True, pergunta=texto)
         r["motor"] = "ia_local"
-        r["modelo"] = self.llm.modelo
+        r["modelo"] = self.llm.modelo_em_uso
         r["contexto_ids"] = [(f["fonte"], f["id"]) for f in fontes if f["fonte"] in ("nota", "email", "artigo")]
         r["fontes_recolhidas"] = True
         pessoais = [f for f in fontes if f["fonte"] in ("nota", "email", "conversa")]

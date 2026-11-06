@@ -94,10 +94,39 @@ async function secoesExtrasAjustes(){
   let aparelhosSec = h("section",{class:"painel aj"}), vigiaSec = h("section",{class:"painel aj"});
   try { aparelhosSec = await secAparelhos(); } catch(e){}
   try { vigiaSec = await secVigia(); } catch(e){}
-  return [contasSec, nuvemSec, aparelhosSec, vigiaSec, licSec];
+  let redeSec = h("section",{class:"painel aj"}), atuSec = h("section",{class:"painel aj"});
+  try { redeSec = await secRede(); } catch(e){}
+  try { atuSec = await secAtualizacoes(); } catch(e){}
+  return [contasSec, nuvemSec, aparelhosSec, vigiaSec, licSec, redeSec, atuSec];
 }
 
 /* ---------- Ajustes: aparelhos (sincronização), vigia e segurança ---------- */
+async function secRede(){
+  const e = estado.cfg || {};
+  const liga = h("input",{type:"checkbox", checked:!!e.acesso_lan});
+  return h("section",{class:"painel aj"}, h("h2",{},"Acesso na rede (celular, tablet e notebook)"),
+    h("p",{class:"ajuda"}, e.acesso_lan ? `Ligado. Endereço deste aparelho: http://${e.ip_local}:${e.porta || 8765}` : "Desligado: o Núcleo só responde neste computador. Ligue no aparelho central para os outros se conectarem."),
+    h("label",{style:"display:flex;gap:8px;align-items:center"}, liga, "Permitir acesso dos meus aparelhos na mesma rede"),
+    h("div",{class:"acoes-aj"}, h("button",{class:"btn primario", onclick:async()=>{
+      try { const r = await api("/api/rede",{method:"POST",body:JSON.stringify({ativo:liga.checked})}); avisar(r.mensagem); } catch(err){ avisar(err.message); } }},"Salvar")));
+}
+async function secAtualizacoes(){
+  const sec = h("section",{class:"painel aj"}, h("h2",{},"Atualizações"));
+  async function desenhar(verificar){
+    let d; try { d = await api("/api/atualizacao" + (verificar ? "?verificar=1" : "")); } catch(err){ sec.append(h("p",{class:"vazio"}, err.message)); return; }
+    sec.replaceChildren(h("h2",{},"Atualizações"),
+      h("p",{class:"ajuda"}, `Versão instalada: ${d.versao_local}. ` + (d.disponivel ? `Nova versão disponível: ${d.versao_remota}.` : (d.motivo || "Você está na versão mais recente."))),
+      h("div",{class:"acoes-aj"},
+        d.disponivel ? h("button",{class:"btn primario", onclick:async ev=>{ ev.target.disabled = true; ev.target.textContent = "Atualizando…";
+          try { const r = await api("/api/atualizacao/aplicar",{method:"POST",body:"{}"}); avisar(r.mensagem);
+            if (r.atualizou){ ev.target.textContent = "Reiniciando…"; setTimeout(() => location.reload(), 9000); } else { ev.target.disabled = false; ev.target.textContent = "Atualizar e reiniciar"; } }
+          catch(err){ avisar(err.message); ev.target.disabled = false; } }},"Atualizar e reiniciar") : null,
+        h("button",{class:"btn", onclick:()=>desenhar(true)},"Verificar agora")),
+      h("p",{class:"ajuda"},"O atalho Núcleo (Nucleo.exe) também verifica e atualiza sozinho a cada abertura."));
+  }
+  await desenhar(false);
+  return sec;
+}
 async function secAparelhos(){
   const s = h("section",{class:"painel aj"}, h("h2",{},"Seus aparelhos (sincronização)"));
   async function desenhar(){
@@ -107,11 +136,14 @@ async function secAparelhos(){
     const servidor = h("input",{type:"text", value:d.servidor || "", placeholder:"http://192.168.0.10:8765"});
     const frase = h("input",{type:"password", placeholder: d.tem_frase ? "Frase guardada (digite outra para trocar)" : "Frase secreta (igual em todos os aparelhos)"});
     const auto = h("input",{type:"checkbox", checked:d.automatico !== false});
+    const usarCentral = h("input",{type:"checkbox", checked:d.usar_central !== false});
     const extra = h("div");
     const desenharExtra = () => extra.replaceChildren(...(papel === "central"
       ? [h("p",{class:"ajuda"}, `Este é o aparelho central. Nos outros, escolha “Secundário” e aponte para: http://${d.este_ip}:${(estado.cfg && estado.cfg.porta) || 8765}`),
          h("p",{class:"ajuda"}, "Tablet e iPhone não precisam de app: abrem esse mesmo endereço no navegador (veja Acesso pelo celular).")]
       : [h("label",{class:"rot"},"Endereço do aparelho central"), servidor,
+         h("label",{style:"display:flex;gap:8px;align-items:center;margin-top:8px"}, usarCentral, "Usar a IA do central quando estiver na mesma rede (respostas melhores; fora de casa, volta para a deste aparelho)"),
+         d.ia_central ? h("p",{class:"ajuda", style:"color:var(--salvia)"},"Agora usando a IA do central.") : null,
          h("label",{class:"rot"},"Sincronizar sozinho de tempos em tempos"), h("label",{style:"display:flex;gap:8px;align-items:center"}, auto, "Automático")]));
     const desenharSeg = () => segP.replaceChildren(...[["central","Central (fica mais ligado)"],["cliente","Secundário"]].map(([k,r]) =>
       h("button",{"aria-pressed":String(papel===k), onclick:()=>{ papel = k; desenharSeg(); desenharExtra(); }}, r)));
@@ -127,7 +159,7 @@ async function secAparelhos(){
       h("div",{class:"acoes-aj"},
         h("button",{class:"btn primario", onclick:async()=>{
           try { await api("/api/sinc/config",{method:"POST",body:JSON.stringify({ativo:document.getElementById("sinc-on").checked,
-            papel, servidor:servidor.value, automatico:auto.checked, frase:frase.value || undefined})}); avisar("Sincronização salva."); desenhar(); }
+            papel, servidor:servidor.value, automatico:auto.checked, usar_central:usarCentral.checked, frase:frase.value || undefined})}); avisar("Sincronização salva."); desenhar(); }
           catch(err){ avisar(err.message); } }},"Salvar"),
         papel === "cliente" ? h("button",{class:"btn", onclick:async()=>{ try { const r = await api("/api/sinc/agora",{method:"POST",body:"{}"}); avisar(r.ok ? `Sincronizado: ${r.recebidos} recebido(s), ${r.enviados} enviado(s).` : r.mensagem); desenhar(); } catch(err){ avisar(err.message); } }},"Sincronizar agora") : null, st));
   }
