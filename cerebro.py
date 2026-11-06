@@ -638,7 +638,34 @@ class Nucleo:
         self.pendente = {"tipo": tipo, "dados": acao.get("dados") or {}, "criado": time.time()}
         return resposta
 
+    PEDE_OPINIAO = re.compile(r"\b(acha|achas|devo|deveria|melhor|vale a pena|compensa|preciso|consigo|da (pra|para)|"
+                              r"posso|sera que|recomenda|sugere|e bom|e seguro|e arriscado|tenho tempo|chego a tempo|cabe)\b")
+
+    def _resposta_direta(self, texto: str, r: dict) -> dict:
+        """Quando a pergunta pede opinião ou sim/não, responde primeiro em uma frase, usando só os dados do cartão."""
+        if r.get("tipo") not in ("agenda", "financeiro", "lista", "clima") or not self.PEDE_OPINIAO.search(sem_acento(texto)):
+            return r
+        if r.get("tipo") == "clima" and r.get("titulo") != "Previsão do tempo":
+            return r                             # o clima já respondeu com conselho próprio
+        if not self._ia_ok():
+            return r
+        dados = "\n".join([r.get("titulo", "")] + r.get("linhas", [])[:6] +
+                          [f"- {i.get('titulo', '')} {i.get('meta', '')} {i.get('valor', '')}".strip() for i in r.get("itens", [])[:10]])
+        try:
+            frase = self.llm.conversar([{"role": "user", "content": f"Pergunta: {texto}\n\nDados:\n{dados}"}],
+                                       "Responda à pergunta do usuário em UMA ou DUAS frases curtas, em português do Brasil, "
+                                       "começando pela resposta (sim, não, ou a recomendação). Use somente os dados; se eles "
+                                       "não bastarem para responder, diga isso em uma frase. Não repita a lista.",
+                                       temperatura=0.2, max_tokens=90).strip()
+        except Exception:
+            return r
+        if frase:
+            r["linhas"] = [r.get("titulo", "")] + r.get("linhas", []) if r.get("titulo") else r.get("linhas", [])
+            r["titulo"] = frase.split("\n")[0][:240]
+        return r
+
     def _depois(self, texto: str, resposta: dict) -> dict:
+        resposta = self._resposta_direta(texto, resposta)
         resposta = self._aplicar_permissao(resposta)
         avaliar_nivel(resposta)
         if getattr(self, "_t0", None):
@@ -834,8 +861,10 @@ class Nucleo:
                 re.search(r"\b(briefing|me da o resumo do dia|resumo do dia|como esta meu dia|o que tem pra hoje)\b", t):
             return {"tipo": "briefing", "titulo": "Preparando o briefing do dia.", "linhas": [], "itens": [], "local": True}
 
-        if re.search(r"\b(tempo|clima|previsao|vai chover|chuva|temperatura|calor|frio)\b", t) and \
-                not re.search(r"\b(tempo livre|quanto tempo|tempo de|a tempo)\b", t):
+        if re.search(r"\b(clima|previsao|vai chover|chove|chover|chuva|temperatura|calor|frio|guarda.?chuva|sombrinha|"
+                     r"casaco|agasalho|blusa de frio|protetor solar|(como (esta|vai|fica)|faz) o tempo|o tempo (hoje|amanha|agora|la|em|no|na)|"
+                     r"tempo (hoje|amanha|agora))\b", t) and \
+                not re.search(r"\b(tenho tempo|ter tempo|tempo livre|quanto tempo|tempo de|a tempo|tempo para|tempo pra)\b", t):
             r = self._clima(texto, t)
             if r is not None:
                 return r
@@ -898,7 +927,8 @@ class Nucleo:
         if self.CRIAR_EVENTO.search(t):
             return self._propor_evento(texto, agora)
         if re.search(r"\b(agenda|reunia\w*|reunioes|compromisso\w*|evento\w*|livre|ocupado|tenho (hoje|amanha)|"
-                     r"o que (eu )?tenho|tenho algo|minha semana|meu dia)\b", t):
+                     r"o que (eu )?tenho|tenho algo|minha semana|meu dia|tenho tempo|tempo livre|estou livre|"
+                     r"tenho (um )?horario|tenho espaco|consigo encaixar|chego a tempo)\b", t):
             return self._agenda(texto, agora)
 
         if self._ia_ok() and self.PERGUNTA_DIRETA.match(sem_acento(texto)) and not self.TEM_ACAO.search(sem_acento(texto)):
@@ -1161,9 +1191,10 @@ class Nucleo:
             mostrar = ["amanha"]
         elif re.search(r"\b(semana|proximos dias|fim de semana)\b", t):
             mostrar = ["semana"]
-        linhas, itens = [], []
+        linhas, itens, primeiro = [], [], None
         for local in locais[:4]:
             c = briefing.clima_local(self.app.cfg, local)
+            primeiro = primeiro or c
             if not c:
                 linhas.append(f"Não consegui consultar o clima de {local.get('cidade', 'um local')} agora.")
                 continue
@@ -1173,7 +1204,47 @@ class Nucleo:
                 itens.append({"titulo": f"{c['cidade']}: {d['descricao'] or 'previsão'}",
                               "meta": f"{data:%d/%m}, {round(d['minima'])}° a {round(d['maxima'])}°",
                               "valor": f"{d['chuva']}% chuva" if d["chuva"] is not None else ""})
+        conselho = self._conselho_clima(t, primeiro, "amanha" in mostrar) if primeiro else None
+        if conselho:
+            return self._r("clima", conselho, linhas=linhas, itens=itens, fontes=["Open-Meteo"])
         return self._r("clima", "Previsão do tempo", linhas=linhas, itens=itens, fontes=["Open-Meteo"])
+
+    @staticmethod
+    def _conselho_clima(t: str, c: dict, amanha: bool) -> str | None:
+        """Responde a pergunta de conselho (guarda-chuva, casaco, calor) em vez de só listar a previsão."""
+        dias = c.get("dias") or []
+        d = dias[1] if amanha and len(dias) > 1 else (dias[0] if dias else {})
+        quando = "amanhã" if amanha else "hoje"
+        chuva = d.get("chuva") if d.get("chuva") is not None else c.get("chuva")
+        desc = (d.get("descricao") or c.get("descricao") or "").lower()
+        molhado = any(x in desc for x in ("chuva", "garoa", "temporal", "trovoada", "aguaceiro"))
+        minima, maxima = d.get("minima", c.get("minima")), d.get("maxima", c.get("maxima"))
+        if re.search(r"\b(guarda.?chuva|sombrinha|capa de chuva|vai chover|chove|chover|molhar|chuva)\b", t):
+            if chuva is None:
+                return None
+            if not re.search(r"\b(guarda.?chuva|sombrinha|capa de chuva|levo|levar|molhar)\b", t):
+                if chuva >= 60:
+                    return f"Sim, provavelmente vai chover {quando}: {chuva}% de chance" + (f", com {desc}." if desc else ".")
+                if chuva >= 30:
+                    return f"Pode chover {quando}: {chuva}% de chance."
+                return f"Provavelmente não: só {chuva}% de chance de chuva {quando}."
+            if chuva >= 60 or (molhado and chuva >= 40):
+                return f"Sim, leve o guarda-chuva: {chuva}% de chance de chuva {quando}" + (f", com {desc}." if desc else ".")
+            if chuva >= 30:
+                return f"Vale levar, por garantia: {chuva}% de chance de chuva {quando}."
+            return f"Não precisa: só {chuva}% de chance de chuva {quando}."
+        if re.search(r"\b(casaco|blusa|agasalho|jaqueta|moletom|frio)\b", t) and minima is not None:
+            if minima < 15:
+                return f"Sim, leve um casaco: a mínima {quando} é de {round(minima)} graus."
+            if minima < 19:
+                return f"Uma blusa leve resolve: a mínima {quando} é de {round(minima)} graus."
+            return f"Não precisa de casaco: a mínima {quando} é de {round(minima)} graus."
+        if re.search(r"\b(calor|protetor|sol|praia|piscina|bermuda|regata)\b", t) and maxima is not None:
+            if maxima >= 30:
+                return f"Vai fazer calor: máxima de {round(maxima)} graus {quando}. Protetor solar e água." + \
+                       (f" Atenção: {chuva}% de chance de chuva." if chuva and chuva >= 40 else "")
+            return f"Calor moderado: máxima de {round(maxima)} graus {quando}."
+        return None
 
     # ------------------------------------------------------------ ações no computador
     def _acao_por_regras(self, texto: str, t: str) -> dict | None:
@@ -1605,7 +1676,8 @@ class Nucleo:
                 if not re.search(r"semana|mes|dias|hoje|amanha", t):
                     de, ate, rotulo = hoje, hoje + dt.timedelta(days=1), "hoje"
         eventos, falhas = self.app.eventos(de, ate)
-        if m := re.search(r"\bcom (?:o |a )?([a-z0-9 ]{3,30}?)(?:\?|$| hoje| amanha| na | no | essa| esta| semana)", t + " "):
+        if (m := re.search(r"\bcom (?:o |a )?([a-z0-9 ]{3,30}?)(?:\?|$| hoje| amanha| na | no | essa| esta| semana)", t + " ")) and \
+                not re.match(r"(calma|tempo|folga|pressa|antecedencia|tranquilidade|seguranca|certeza|cuidado)\b", m.group(1)):
             alvo = m.group(1).strip()
             eventos = [e for e in eventos if alvo in sem_acento(e["titulo"])
                        or any(alvo in sem_acento(n + " " + a) for n, a in e["pessoas"])]

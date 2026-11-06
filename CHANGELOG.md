@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 0.16.2
+- Perguntas de conselho e de sim/não recebem resposta direta primeiro ("Sim, leve o guarda-chuva: 86% de chance de chuva hoje"), com os dados embaixo como apoio:
+  - no clima, por regras (guarda-chuva, vai chover, casaco, calor), mesmo sem a IA;
+  - na agenda, no financeiro e nas listas, a IA local escreve a frase usando só os dados do cartão.
+- "Tenho tempo para…", "estou livre…", "consigo encaixar…" consultam a agenda (antes eram confundidos com clima pela palavra "tempo").
+- "Com calma", "com folga" etc. não são mais tratados como nome de pessoa na agenda.
+
 ## 0.16.1
 - Corrigido: compromissos da agenda do Núcleo não apareciam na tela Agenda nem no resumo do dia (já estavam gravados; só não eram lidos ali).
 - O resultado do que o Núcleo faz aparece como "Feito pelo Núcleo", com texto normal e o botão do convite .ics.
