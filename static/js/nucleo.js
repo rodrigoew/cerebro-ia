@@ -307,7 +307,7 @@ function cartaoResposta(r, opc = {}){
       botoes.append(h("button",{class:"n-btn", onclick:ev=>recusar(ev, false)}, "Cancelar"));
     }
   } else if (r.acao && r.pergunta_permissao){
-    const concluir = x => { const res = {tipo:"acao_resultado", titulo:x.mensagem, linhas:[], itens:[], local:true, ok:true, ics:x.ics};
+    const concluir = x => { const res = {tipo:"acao_resultado", titulo:x.mensagem, linhas:[], itens:[], local:true, ok:true, ics:x.ics, origem:"nucleo"};
       document.getElementById("n-feed").append(cartaoResposta(res)); rolarFeed(); aplicarNivel(res); palcoFinal(res, false);
       estadoNucleo(estadoOcioso()); carregarNucleo(); acompanharSilencioso(); if (conversa.ativa) falarCartao(res); };
     const fazer = async (ev, lembrar) => { ev.target.disabled = true;
@@ -341,9 +341,12 @@ function cartaoResposta(r, opc = {}){
   if (r.tipo === "acao_resultado"){
     const saida = h("pre",{class:"n-saida"}, r.linhas.join("\n"));
     const titulo = h("h3",{}, r.titulo);
-    const cartao = h("div",{class:"n-resp"+(r.ok === false ? " falhou" : "")}, h("span",{class:"selo"}, h("i"), "Ação no computador"),
-      titulo, r.linhas.length ? saida : null, aprender);
-    if (!r.linhas.length) saida.remove();
+    const doNucleo = r.origem === "nucleo";
+    const corpo = doNucleo ? r.linhas.map(l => h("p",{}, l)) : (r.linhas.length ? [saida] : []);
+    const convite = r.ics ? h("div",{class:"n-botoes"}, h("a",{class:"n-btn", href:r.ics, download:""}, "Levar para o Google/Outlook (.ics)")) : null;
+    const cartao = h("div",{class:"n-resp"+(r.ok === false ? " falhou" : ""), "data-nivel":r.nivel || (r.ok === false ? "normal" : "sucesso")},
+      h("span",{class:"selo"}, h("i"), doNucleo ? "Feito pelo Núcleo" : "Ação no computador"),
+      titulo, ...corpo, convite, aprender);
     if (r.tarefa){
       (async function acompanhar(){
         try { const t = await api(`/api/acoes/tarefa/${r.tarefa}`);

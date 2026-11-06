@@ -603,11 +603,12 @@ class Nucleo:
         self.pendente = None
         if nunca or nao:
             msg = self.app.lembrar_permissao(pend["tipo"], "nunca") if nunca else "Tudo bem, não fiz nada."
-            return {"tipo": "acao_resultado", "titulo": msg, "linhas": [], "itens": [], "local": True, "ok": True, "nivel": "normal"}
+            return {"tipo": "acao_resultado", "titulo": msg, "linhas": [], "itens": [], "local": True, "ok": True, "nivel": "normal",
+                    "origem": "nucleo"}
         x = self.app.executar_acao_nucleo(pend["tipo"], pend["dados"])
         linhas = [self.app.lembrar_permissao(pend["tipo"], "sempre")] if sempre else []
         return {"tipo": "acao_resultado", "titulo": x["mensagem"], "linhas": linhas, "itens": [], "local": True,
-                "ok": True, "ics": x.get("ics")}
+                "ok": True, "ics": x.get("ics"), "origem": "nucleo"}
 
     def _aplicar_permissao(self, resposta: dict) -> dict:
         """Ações do Núcleo: faz direto se você autorizou "sempre", recusa se disse "nunca", senão pergunta."""
@@ -625,9 +626,11 @@ class Nucleo:
                 return self._r("texto", "Não consegui fazer isso.", linhas=[str(erro)])
             self.app.acoes._contar_uso(f"nucleo:{tipo}")
             return {"tipo": "acao_resultado", "titulo": x["mensagem"], "itens": [], "local": True, "ok": True, "ics": x.get("ics"),
+                    "origem": "nucleo",
                     "linhas": resposta.get("linhas", [])[:2] + ["Fiz sem perguntar porque você autorizou. Para rever: Ajustes > Permissões."]}
         if decisao == "nunca":
             return {"tipo": "acao_resultado", "titulo": "Não fiz.", "itens": [], "local": True, "ok": False, "nivel": "normal",
+                    "origem": "nucleo",
                     "linhas": [f"Você me pediu para não {descricao.lower()}. Pode mudar em Ajustes > Permissões."]}
         resposta["pergunta_permissao"] = True
         acao["pode_lembrar"] = risco != "alto"

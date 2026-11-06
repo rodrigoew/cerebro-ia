@@ -776,8 +776,9 @@ class Aplicativo:
         meus = {x["usuario"].lower() for x in self.cfg["contas"]}
         return meus | {x.lower() for x in self.cfg.get("meus_enderecos_extras", [])}
 
-    def eventos(self, de: dt.date, ate: dt.date):
-        lista, falhas = c.ler_agendas(self.cfg, de, ate, self.fuso)
+    def eventos(self, de: dt.date, ate: dt.date, forcar: bool = False):
+        """Todos os compromissos: agendas externas (links .ics) + a agenda própria do Núcleo."""
+        lista, falhas = c.ler_agendas(self.cfg, de, ate, self.fuso, forcar=forcar)
         idx = len(self.cfg.get("calendarios_ics", []))
         for e in self.memoria.q("SELECT * FROM agenda_nucleo WHERE inicio >= ? AND inicio < ? ORDER BY inicio",
                                 (de.isoformat(), ate.isoformat())):
@@ -1154,8 +1155,7 @@ class Aplicativo:
         esperar = sum(1 for m in analise["candidatos"]
                       if id(m) not in mostrados and not m["respondida"] and not m["lida"])
 
-        eventos, falhas_agenda = c.ler_agendas(cfg, hoje, hoje + dt.timedelta(days=1),
-                                               self.fuso, forcar=True)
+        eventos, falhas_agenda = self.eventos(hoje, hoje + dt.timedelta(days=1), forcar=True)
         compromissos = []
         for ev in eventos:
             quem, contexto = c.contexto_do_evento(ev, dados, dados["meus"])
@@ -1187,7 +1187,7 @@ class Aplicativo:
 
     # ------------------------------------------------------------ agenda
     def agenda(self, de: dt.date, ate: dt.date) -> dict:
-        eventos, falhas = c.ler_agendas(self.cfg, de, ate, self.fuso)
+        eventos, falhas = self.eventos(de, ate)
         meus = {x["usuario"].lower() for x in self.cfg["contas"]}
         saida = []
         for ev in eventos:

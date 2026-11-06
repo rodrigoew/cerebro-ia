@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 0.16.1
+- Corrigido: compromissos da agenda do Núcleo não apareciam na tela Agenda nem no resumo do dia (já estavam gravados; só não eram lidos ali).
+- O resultado do que o Núcleo faz aparece como "Feito pelo Núcleo", com texto normal e o botão do convite .ics.
+
 ## 0.16.0
 - Permissões por ação com memória: na primeira vez o Núcleo pergunta (Fazer e não perguntar mais / Fazer só agora / Agora não / Nunca) e passa a respeitar a sua escolha. Toda ação fica no histórico, virando memória.
 - Ações delicadas (instalar atualizações, desligar) sempre pedem confirmação por clique, mesmo autorizadas.
