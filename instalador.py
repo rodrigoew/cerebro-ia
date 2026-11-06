@@ -25,7 +25,7 @@ from pathlib import Path
 
 from voz import ARQUIVOS_KOKORO, URL_KOKORO, URL_PIPER, VOZES_PIPER
 
-PACOTES_VOZ = ["faster-whisper>=1.1", "piper-tts>=1.2", "kokoro-onnx>=0.4", "numpy>=1.26"]
+PACOTES_VOZ = ["faster-whisper>=1.1", "piper-tts>=1.2", "kokoro-onnx>=0.4", "numpy>=1.26", "edge-tts"]
 PACOTES_CUDA = ["nvidia-cublas-cu12", "nvidia-cudnn-cu12>=9,<10"]
 
 
@@ -115,6 +115,8 @@ class Instalador:
             return
         modelo = "qwen3:14b" if vram >= 16 else "qwen3:8b" if vram >= 7 else "qwen3:4b"
         cfg.setdefault("llm_local", {})["modelo"] = modelo
+        cfg["llm_local"]["contexto"] = 8192 if vram >= 7 else 4096
+        cfg["llm_local"]["embedding_na_cpu"] = vram < 7
         cfg.setdefault("voz", {})["dispositivo"] = "auto" if vram >= 6 else "cpu"
         self.app.llm.modelo = modelo
         self.app.voz.dispositivo = cfg["voz"]["dispositivo"]

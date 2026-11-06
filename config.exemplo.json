@@ -130,7 +130,6 @@
     "url": "http://127.0.0.1:11434",
     "modelo": "qwen3:8b",
     "modelo_embedding": "bge-m3",
-    "contexto": 8192,
     "manter_carregado": "30m"
   },
   "voz": {

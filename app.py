@@ -421,6 +421,19 @@ class Aplicativo:
                     self.notificar("Compromisso", f"Você prometeu a {c['pessoa_nome'] or c['pessoa']}: {c['texto']}",
                                    "risco" if c["prazo"] < hoje.isoformat() else "atencao", "pessoas")
 
+    def transcrever(self, pcm: bytes) -> str:
+        """Usa o Whisper do central (placa de vídeo) quando estiver acessível; senão, o deste computador."""
+        remoto = self.llm._estado_remoto()
+        if remoto and remoto.get("voz_ok") and self.cfg.get("voz", {}).get("usar_central", True):
+            try:
+                req = urllib.request.Request(self.llm.remoto["url"].rstrip("/") + "/api/ia/voz", data=pcm,
+                                             headers={"Content-Type": "application/octet-stream", "X-Sinc": self.sinc.token_servidor()})
+                with urllib.request.urlopen(req, timeout=30) as r:
+                    return json.loads(r.read()).get("texto", "")
+            except Exception:
+                self.llm._remoto_falhou()
+        return self.voz.transcrever(pcm, vocabulario=self.vocabulario())
+
     # ------------------------------------------------------------ IA do central (notebook usa a placa do PC)
     def configurar_ia_remota(self) -> None:
         sc = self.cfg.get("sincronizacao", {})
@@ -1102,7 +1115,9 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
             if host in ("127.0.0.1", "localhost", "[::1]", "::1"):
                 return True
             # na LAN, só IPs privados são aceitos como Host (bloqueia rebind de DNS por um site malicioso)
-            return lan and bool(re.match(r"^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[?[fF][dDeE])", host))
+            if lan and host.endswith(".ts.net"):
+                return True
+            return lan and bool(re.match(r"^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|\[?[fF][dDeE])", host))
 
         def _autorizado(self) -> bool:
             ip = self._ip()
@@ -1352,7 +1367,15 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
             if caminho == "/estado":
                 st = app.llm.status()
                 self._json(200, {"chat_ok": st.get("chat_ok") and not st.get("central"), "emb_ok": st.get("emb_ok"),
-                                 "modelo": app.llm.modelo, "modelo_embedding": app.llm.modelo_emb})
+                                 "modelo": app.llm.modelo, "modelo_embedding": app.llm.modelo_emb,
+                                 "voz_ok": app.voz.tem_whisper()})
+                return True
+            if caminho == "/voz" and self.command == "POST":
+                tamanho = int(self.headers.get("Content-Length") or 0)
+                if not 0 < tamanho <= 4_000_000:
+                    self._json(400, {"erro": "Áudio vazio ou longo demais."})
+                    return True
+                self._json(200, {"texto": app.voz.transcrever(self.rfile.read(tamanho), vocabulario=app.vocabulario())})
                 return True
             if caminho not in ("/api/tags", "/api/chat", "/api/embed", "/api/embeddings"):   # nada de pull/delete
                 self._json(404, {"erro": "Não permitido."})
@@ -1417,12 +1440,12 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                     tamanho = int(self.headers.get("Content-Length") or 0)
                     if not 0 < tamanho <= 4_000_000:
                         raise ValueError("Áudio vazio ou longo demais (máximo de 2 minutos).")
-                    self._json(200, {"texto": app.voz.transcrever(self.rfile.read(tamanho), vocabulario=app.vocabulario())})
+                    self._json(200, {"texto": app.transcrever(self.rfile.read(tamanho))})
                 elif url.path == "/api/voz/conversa":
                     tamanho = int(self.headers.get("Content-Length") or 0)
                     if not 0 < tamanho <= 4_000_000:
                         raise ValueError("Áudio vazio ou longo demais.")
-                    ouvido = app.voz.transcrever(self.rfile.read(tamanho), vocabulario=app.vocabulario())
+                    ouvido = app.transcrever(self.rfile.read(tamanho))
                     if not ouvido:
                         return self._json(200, {"ouvido": ""})
                     if self.headers.get("X-Sentinela") == "1":
@@ -1451,7 +1474,7 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                     audio = app.voz.sintetizar(str(corpo.get("texto", ""))[:1200], voz_id,
                                                float(corpo["velocidade"]) if corpo.get("velocidade") else None)
                     self.send_response(200)
-                    self.send_header("Content-Type", "audio/wav")
+                    self.send_header("Content-Type", "audio/wav" if audio[:4] == b"RIFF" else "audio/mpeg")
                     self.send_header("Cache-Control", "no-store")
                     self.send_header("Content-Length", str(len(audio)))
                     self.end_headers()
@@ -1640,7 +1663,7 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                     tamanho = int(self.headers.get("Content-Length") or 0)
                     if not 0 < tamanho <= 4_000_000:
                         raise ValueError("Áudio vazio ou longo demais.")
-                    ouvido = app.voz.transcrever(self.rfile.read(tamanho), vocabulario=app.vocabulario())
+                    ouvido = app.transcrever(self.rfile.read(tamanho))
                     if not ouvido:
                         return self._json(200, {"ouvido": ""})
                     if self.headers.get("X-Sentinela") == "1":
@@ -1938,9 +1961,14 @@ def abrir_janela(url: str, bloquear: bool, app=None) -> None:
         JANELA_WV = webview.create_window(PRODUTO, url, width=1360, height=880, min_size=(980, 640),
                                           fullscreen=tela_cheia, background_color="#0A0806", js_api=api_js)
         if cfg.get("indicador_flutuante", True):
-            largura, altura = 150, 170
+            largura, altura = 150, 40                      # cápsula discreta no canto superior direito
+            try:
+                tela = webview.screens[0]
+                x, y = tela.width - largura - 18, 14
+            except Exception:
+                x, y = None, None
             INDICADOR_WV = webview.create_window(f"{PRODUTO} - indicador", url.split("?")[0].rstrip("/") + "/indicador",
-                                                 width=largura, height=altura, frameless=True, on_top=True,
+                                                 width=largura, height=altura, x=x, y=y, frameless=True, on_top=True,
                                                  resizable=False, hidden=True, transparent=True,
                                                  background_color="#0A0806", js_api=api_js, easy_drag=True)
 
@@ -2108,6 +2136,7 @@ def main() -> None:
     threading.Thread(target=lambda: print(app.iniciar_freellmapi()), daemon=True).start()
     if app.cfg.get("vigia", {}).get("ativo"):
         print(app.vigia.iniciar())
+    threading.Thread(target=app.llm.aquecer, daemon=True).start()     # 1ª resposta já rápida
     print(f"{PRODUTO} rodando em {url}")
     if not args.sem_janela and app.cfg.get("bandeja", True):
         base_url = f"http://127.0.0.1:{porta}/"

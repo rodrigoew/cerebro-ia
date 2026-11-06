@@ -337,7 +337,9 @@ function cartaoResposta(r, opc = {}){
   if (r.abrir) botoes.append(h("button",{class:"n-btn", onclick:()=>{ if (r.abrir.tela === "mente"){ if (r.abrir.aba === "decisoes") mt.decisao = r.abrir.id; irPara("mente"); carregarMente(r.abrir.aba); } else irPara(r.abrir.tela); }}, ({mente:"Abrir em Mente", pessoas:"Abrir em Pessoas", emails:"Abrir em E-mails", financeiro:"Abrir no Financeiro"})[r.abrir.tela] || "Abrir"));
   const conf = r.confianca ? h("span",{class:"n-conf "+r.confianca.nivel, title:r.confianca.motivo}, `confiança ${({alta:"alta",media:"média",baixa:"baixa"})[r.confianca.nivel]}`) : null;
   const linhasEl = r.linhas.map(l => { const p = h("p",{}); if (["ia_local","claude"].includes(r.tipo) && !opc.semDigitacao) revelarTexto(p, l); else p.textContent = l; return p; });
-  const seloFinal = conf ? h("span",{class:"selo"}, ...selo.childNodes, conf) : selo;
+  const tempo = r.tempos && r.tempos.total ? h("span",{class:"n-tempo", title:"Tempo até começar a responder e tempo total"},
+    (r.tempos.primeiro ? `${r.tempos.primeiro.toFixed(1).replace(".",",")} s até começar · ` : "") + `${r.tempos.total.toFixed(1).replace(".",",")} s`) : null;
+  const seloFinal = (conf || tempo) ? h("span",{class:"selo"}, ...selo.childNodes, conf, tempo) : selo;
   return h("div",{class:"n-resp"+(r.local?"":" claude"), "data-nivel":r.nivel || "normal"}, seloFinal, r.titulo ? h("h3",{}, r.titulo, risco) : null,
     ...linhasEl, itens, botoes.children.length ? botoes : null, aprender);
 }

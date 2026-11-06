@@ -580,6 +580,10 @@ class Nucleo:
 
     def _depois(self, texto: str, resposta: dict) -> dict:
         avaliar_nivel(resposta)
+        if getattr(self, "_t0", None):
+            resposta["tempos"] = {"total": round(time.time() - self._t0, 2),
+                                  "primeiro": round(self._t_primeiro - self._t0, 2) if getattr(self, "_t_primeiro", None) else None}
+            self._t_primeiro = None
         if self.ap is not None and resposta.get("tipo") not in ("erro",):
             resumo = "\n".join([resposta.get("titulo", "")] + resposta.get("linhas", []) +
                                [f"- {i.get('titulo', '')} {i.get('meta', '')} {i.get('valor', '')}".strip()
@@ -595,6 +599,7 @@ class Nucleo:
         if not texto:
             raise ValueError("Escreva ou fale um pedido.")
         self.modo_voz = modo_voz
+        self._t0 = time.time()
         self._fluxo = False
         antes = self._antes(texto, modo_voz)
         if antes is not None:
@@ -607,6 +612,7 @@ class Nucleo:
         if not texto:
             raise ValueError("Escreva ou fale um pedido.")
         self.modo_voz = modo_voz
+        self._t0 = time.time()
         antes = self._antes(texto, modo_voz)
         if antes is not None:
             yield {"evento": "fim", "resposta": self._depois(texto, antes) if antes.get("tipo") != "acao_resultado" else antes}
@@ -624,6 +630,8 @@ class Nucleo:
                 for pedaco in provedores.enviar_fluxo(self.app.cfg, pac["sistema"], pac["conteudo"], papel="auto"):
                     if not partes:
                         yield {"evento": "inicio", "modelo": rotulo, "origem": "nuvem", "sem_dados_pessoais": pac["rota"] == "geral"}
+                    if not partes:
+                        self._t_primeiro = time.time()
                     partes.append(pedaco)
                     yield {"evento": "texto", "texto": pedaco}
                 if not "".join(partes).strip():
@@ -651,6 +659,8 @@ class Nucleo:
         try:
             for pedaco in self.llm.conversar_fluxo(prep["mensagens"], prep["sistema"],
                                                    max_tokens=220 if modo_voz else 900):
+                if not partes:
+                    self._t_primeiro = time.time()
                 partes.append(pedaco)
                 yield {"evento": "texto", "texto": pedaco}
         except Exception as erro:
@@ -664,6 +674,10 @@ class Nucleo:
         yield {"evento": "fim", "resposta": self._depois(texto, self._montar_ia(texto, resposta, fontes))}
 
     # ------------------------------------------------------------ roteamento automático para a nuvem (ex.: FreeLLMAPI)
+    PERGUNTA_DIRETA = re.compile(r"^\W*(o que|o q|como|por que|porque|pq|qual|quais|quando|quem|onde|quanto|quantos|quantas|"
+                                 r"explica|me explica|me fala|fala sobre|existe|e possivel|vale a pena|o que e|diferenca)\b")
+    TEM_ACAO = re.compile(r"\b(abr[aei]\w*|instal\w*|deslig\w*|bloquei\w*|lembr\w*|anot\w*|lanc\w*|agend\w*|marc\w*|"
+                          r"cri[ae]\w*|inici\w*|organiz\w*|decid\w*|rascunh\w*|envi\w*|atualiz\w*|verific\w*|limp\w*)\b")
     PESSOAL = re.compile(r"\b(meu|minha|meus|minhas|comigo|combinei|prometi|me deve|nosso|nossa|eu (tenho|devo|fiz|disse|falei|paguei)|"
                          r"minha empresa|meu cliente|meus e-?mails|minha agenda|minhas contas)\b")
 
@@ -809,6 +823,8 @@ class Nucleo:
         if re.search(r"\b(agenda|reunia\w*|reunioes|compromisso\w*|evento\w*|livre|ocupado|tenho (hoje|amanha))\b", t):
             return self._agenda(texto, agora)
 
+        if self._ia_ok() and self.PERGUNTA_DIRETA.match(sem_acento(texto)) and not self.TEM_ACAO.search(sem_acento(texto)):
+            return self._responder_com_ia(texto)      # economiza uma consulta à IA (mais rápido)
         if self._ia_ok():
             try:
                 r = self._rotear_por_ferramentas(texto, agora)

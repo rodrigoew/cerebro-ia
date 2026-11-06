@@ -13,6 +13,19 @@ Telas:
 
 Na primeira vez, um assistente de **primeiros passos** pergunta seu nome, o nome do assistente, a voz e a cidade, e depois instala a IA local.
 
+## Novidades da 0.14
+
+- **Indicador discreto:** uma cápsula pequena no canto superior direito, quase transparente em espera.
+- **Mais rápido:**
+  - o modelo já fica carregado na placa ao abrir;
+  - no notebook (4 GB), a busca roda no processador e o modelo de conversa não sai mais da placa a cada pergunta;
+  - perguntas diretas pulam uma etapa.
+  
+  Cada resposta mostra o tempo até começar e o tempo total.
+- **Vozes naturais:** em **Ajustes**, na seção **Voz**, escolha Thalita, Francisca ou Antônio ("Neural (internet)"). O texto falado vai à Microsoft. Sem internet, o Núcleo usa a Kokoro sozinho.
+- **O notebook usa o Whisper do PC:** a transcrição da sua fala também vai para a RTX 3060 do PC quando ele está acessível.
+- **Fora de casa, com Tailscale:** instale o Tailscale (tailscale.com, grátis para uso pessoal) no PC e no notebook, com a mesma conta. No notebook, em **Ajustes > Seus aparelhos**, use o endereço Tailscale do PC (`http://100.x.y.z:8765`). Assim ele usa a IA e o Whisper do PC de qualquer lugar, por uma rede privada e cifrada.
+
 ## Novidades da 0.13
 
 - **Nucleo.exe, sem mais .bat.** Baixe uma vez em github.com/rodrigoew/cerebro-ia, na aba **Releases**, item "Nucleo.exe (lançador)", e abra. A cada abertura, ele confere se há versão nova no GitHub, atualiza (código, dependências e FreeLLMAPI, só quando mudam) e abre o app. Na primeira vez, ele cria o atalho "Núcleo". Em um computador novo, prepara tudo sozinho. Se você tiver alterações no código ainda não enviadas, ele não atualiza e avisa.

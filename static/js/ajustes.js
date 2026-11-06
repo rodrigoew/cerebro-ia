@@ -61,7 +61,7 @@ async function carregarAjustes(){
   }
   desenharVozes();
   const secVoz = h("section",{class:"painel aj"}, h("h2",{},"Voz"),
-    h("p",{class:"ajuda"},"Todas as vozes rodam neste computador, sem consumo de tokens. Kokoro tem a voz feminina (Dora) e soa mais natural; Piper é mais leve."),
+    h("p",{class:"ajuda"},"As vozes “Neural (internet)” são as mais naturais: o texto falado vai aos servidores da Microsoft, e sem internet o Núcleo usa a Kokoro sozinho. As demais rodam neste computador, sem internet e sem custo."),
     grade, h("label",{class:"rot"},"Velocidade da fala"), h("div",{class:"velocidade"}, vel, velRot),
     h("div",{class:"acoes-aj"}, h("button",{class:"btn primario", onclick:async()=>{
       if (await salvarAj("voz",{voz:vozSel, velocidade:+vel.value}, stV)) carregarNucleo().catch(()=>{}); }},"Salvar"),

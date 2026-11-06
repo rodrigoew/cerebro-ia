@@ -1,5 +1,18 @@
 # Histórico de versões
 
+## 0.14.0
+- Indicador flutuante compacto: cápsula de 150×40 no canto superior direito, quase transparente em espera.
+- Respostas mais rápidas:
+  - o modelo é aquecido ao abrir o app e fica na placa por 60 minutos;
+  - em placas pequenas, a busca por significado roda no processador (o modelo de conversa não sai mais da placa a cada pergunta);
+  - contexto de 4 mil tokens para modelos pequenos;
+  - perguntas diretas pulam a consulta extra de roteamento;
+  - o roteador ficou mais leve.
+- Cada resposta mostra o tempo até começar e o tempo total.
+- Vozes neurais naturais da Microsoft (Thalita, Francisca, Antônio), opcionais e com a Kokoro como reserva sem internet.
+- O notebook usa também o Whisper do PC (placa de vídeo) para transcrever a fala.
+- Suporte ao Tailscale: o notebook alcança a IA e o Whisper do PC mesmo fora de casa.
+
 ## 0.13.0
 - Nucleo.exe: lançador único que confere o GitHub a cada abertura, atualiza com segurança (só avança, nunca apaga trabalho seu) e abre o app sem console. Em computador novo, instala Git e Python, baixa o projeto, instala tudo e cria o atalho.
 - O GitHub gera o Nucleo.exe sozinho (GitHub Actions) e publica em Releases.

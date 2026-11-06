@@ -725,3 +725,5 @@ body.modo-palco .area{padding:0}
 @media (max-width:1100px){.palco.com-cartao .p-centro{flex-direction:column;gap:10px;padding:60px 40px 0}
   .palco.com-cartao .p-palco{width:92vw}.palco.com-cartao #n-canvas{width:150px;height:150px}}
 .g-vazio{color:var(--n-suave);font-size:13px;margin:4px 0}
+
+.n-tempo{margin-left:8px;font-size:11px;color:var(--n-suave);opacity:.8}

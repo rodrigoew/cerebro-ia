@@ -22,8 +22,14 @@ class LLMLocal:
         self.url = c.get("url", "http://127.0.0.1:11434").rstrip("/")
         self.modelo = c.get("modelo", "qwen3:8b")
         self.modelo_emb = c.get("modelo_embedding", "bge-m3")
-        self.contexto = int(c.get("contexto", 8192))
-        self.manter = c.get("manter_carregado", "30m")
+        pequeno = any(t in self.modelo for t in (":4b", ":1.7b", ":0.6b"))
+        self.contexto = int(c.get("contexto", 4096 if pequeno else 8192))
+        if pequeno and self.contexto > 4096 and not c.get("contexto_fixo"):
+            self.contexto = 4096        # vale também para configurações antigas, que tinham 8192
+        self.manter = c.get("manter_carregado", "60m")
+        # placas pequenas: a busca por significado roda no processador, para o modelo de conversa
+        # não ser tirado da placa a cada pergunta (era a maior causa de demora em 4 GB)
+        self.emb_cpu = bool(c.get("embedding_na_cpu", pequeno))
         self._estado = (0.0, False, "")
         self._trava = threading.Lock()
         # IA do aparelho central (ex.: o PC com placa maior), usada quando estiver na mesma rede
@@ -153,6 +159,7 @@ class LLMLocal:
         textos = [t[:4000] or " " for t in textos]
         try:
             r = self._req("/api/embed", {"model": self.modelo_emb, "input": textos,
+                                         **({"options": {"num_gpu": 0}} if self.emb_cpu and not self._estado_remoto() else {}),
                                          "keep_alive": self.manter}, timeout=180)
             return r["embeddings"]
         except urllib.error.HTTPError as erro:
@@ -217,7 +224,7 @@ class LLMLocal:
         """Pede ao modelo para escolher ferramentas. Devolve [{"nome", "args"}]."""
         dados = {"model": self.modelo, "stream": False, "keep_alive": self.manter, "think": False,
                  "messages": [{"role": "system", "content": sistema}] + mensagens, "tools": ferramentas,
-                 "options": {"temperature": 0, "num_ctx": self.contexto}}
+                 "options": {"temperature": 0, "num_ctx": min(self.contexto, 4096), "num_predict": 160}}
         try:
             resposta = self._req("/api/chat", dados, timeout=90)
         except urllib.error.HTTPError as erro:
@@ -238,3 +245,18 @@ class LLMLocal:
                     args = {}
             saida.append({"nome": f.get("name", ""), "args": args})
         return saida
+
+
+    # ------------------------------------------------------------ aquecimento (evita a demora da 1ª pergunta)
+    def aquecer(self) -> bool:
+        """Carrega o modelo de conversa na placa antes da primeira pergunta e o mantém lá."""
+        if self._estado_remoto():
+            return True                       # quem responde é o central; ele se aquece sozinho
+        try:
+            self._req("/api/generate", {"model": self.modelo, "prompt": "", "keep_alive": self.manter}, timeout=180, local=True)
+            if self.emb_cpu:
+                self._req("/api/embed", {"model": self.modelo_emb, "input": ["aquecer"], "options": {"num_gpu": 0},
+                                         "keep_alive": self.manter}, timeout=120, local=True)
+            return True
+        except Exception:
+            return False

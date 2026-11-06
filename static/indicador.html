@@ -4,18 +4,19 @@
 <meta charset="utf-8">
 <title>Núcleo - indicador</title>
 <style>
-  html,body{margin:0;height:100%;background:transparent;overflow:hidden;font:12px/1.3 "Segoe UI",system-ui,sans-serif;color:#F1E7D2;user-select:none}
-  .caixa{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer}
-  canvas{width:118px;height:118px}
-  .rot{background:rgba(14,11,8,.82);border:1px solid rgba(217,168,69,.35);border-radius:12px;padding:3px 10px;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis}
-  .vigia{font-size:10.5px;color:#A89A80}
+  html,body{margin:0;height:100%;background:transparent;overflow:hidden;font:12px/1 "Segoe UI",system-ui,sans-serif;color:#F1E7D2;user-select:none}
+  .capsula{position:absolute;inset:3px;display:flex;align-items:center;gap:8px;padding:0 12px 0 6px;border-radius:20px;
+    background:rgba(14,11,8,.72);border:1px solid rgba(217,168,69,.28);cursor:pointer;opacity:.45;transition:opacity .4s, border-color .4s}
+  .capsula.ativa{opacity:1}
+  .capsula:hover{opacity:1}
+  canvas{width:26px;height:26px;flex:none}
+  .rot{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em}
 </style>
 </head>
 <body>
-<div class="caixa" id="caixa" title="Clique para abrir o Núcleo">
-  <canvas id="cv" width="236" height="236" aria-hidden="true"></canvas>
-  <div class="rot" id="rot">Em espera</div>
-  <div class="vigia" id="vigia"></div>
+<div class="capsula" id="capsula" title="Dois cliques abrem o Núcleo · arraste para mover">
+  <canvas id="cv" width="52" height="52" aria-hidden="true"></canvas>
+  <span class="rot" id="rot">Núcleo</span>
 </div>
 <script src="/static/js/indicador.js"></script>
 </body>

@@ -17,6 +17,7 @@ import os
 import re
 import sys
 import threading
+import time
 import wave
 from pathlib import Path
 
@@ -31,6 +32,10 @@ ARQUIVOS_KOKORO = ("kokoro-v1.0.int8.onnx", "voices-v1.0.bin")
 
 # Vozes disponíveis em português do Brasil (id: motor:voz)
 CATALOGO_VOZES = [
+    # vozes neurais da Microsoft (as do "Ler em voz alta" do Edge): muito naturais, precisam de internet
+    {"id": "nuvem:pt-BR-ThalitaMultilingualNeural", "nome": "Thalita", "genero": "feminina", "motor": "Neural (internet)", "qualidade": "natural"},
+    {"id": "nuvem:pt-BR-FranciscaNeural", "nome": "Francisca", "genero": "feminina", "motor": "Neural (internet)", "qualidade": "natural"},
+    {"id": "nuvem:pt-BR-AntonioNeural", "nome": "Antônio", "genero": "masculina", "motor": "Neural (internet)", "qualidade": "natural"},
     {"id": "kokoro:pf_dora", "nome": "Dora", "genero": "feminina", "motor": "Kokoro", "qualidade": "alta"},
     {"id": "kokoro:pm_alex", "nome": "Alex", "genero": "masculina", "motor": "Kokoro", "qualidade": "alta"},
     {"id": "kokoro:pm_santa", "nome": "Santa", "genero": "masculina", "motor": "Kokoro", "qualidade": "alta"},
@@ -119,9 +124,35 @@ class Voz:
             if self.cfg.get("_edicao") == "comercial" and v["motor"] == "Piper":
                 continue
             motor, nome = v["id"].split(":")
-            ok = self.tem_kokoro() if motor == "kokoro" else (self._tem_pacote_piper() and self.caminho_piper(nome).exists())
+            ok = self.tem_nuvem() if motor == "nuvem" else self.tem_kokoro() if motor == "kokoro" else \
+                (self._tem_pacote_piper() and self.caminho_piper(nome).exists())
             saida.append({**v, "instalada": ok, "atual": v["id"] == self.voz_id})
         return saida
+
+    def tem_nuvem(self) -> bool:
+        try:
+            import edge_tts  # noqa: F401
+            return True
+        except ImportError:
+            return False
+
+    def _sintetizar_nuvem(self, texto: str, voz: str, velocidade: float) -> bytes:
+        """Voz neural da Microsoft (MP3). Se falhar (sem internet), quem chama usa a Kokoro."""
+        import asyncio
+        import edge_tts
+        taxa = f"{round((velocidade - 1) * 100):+d}%"
+
+        async def gerar() -> bytes:
+            partes = []
+            async for bloco in edge_tts.Communicate(texto, voz, rate=taxa).stream():
+                if bloco["type"] == "audio":
+                    partes.append(bloco["data"])
+            return b"".join(partes)
+
+        audio = asyncio.run(asyncio.wait_for(gerar(), timeout=10))
+        if not audio:
+            raise RuntimeError("voz neural sem áudio")
+        return audio
 
     def _tem_pacote_piper(self) -> bool:
         try:
@@ -135,7 +166,7 @@ class Voz:
         return f"{v['motor']} ({v['nome']}, {v['genero']})" if v else "voz desconhecida"
 
     def pode_falar(self) -> bool:
-        return self.tem_kokoro() or self.tem_piper()
+        return self.tem_kokoro() or self.tem_piper() or (self.voz_id.startswith("nuvem:") and self.tem_nuvem())
 
     def tem_vosk(self) -> bool:
         try:
@@ -276,6 +307,18 @@ class Voz:
             return b""
         voz_id = voz_id or self.voz_id
         velocidade = max(0.6, min(1.6, float(velocidade or self.velocidade)))
+        if voz_id.startswith("nuvem:"):
+            if self.tem_nuvem() and time.time() - getattr(self, "_falha_nuvem", 0) > 120:
+                try:
+                    return self._sintetizar_nuvem(texto, voz_id.split(":", 1)[1], velocidade)
+                except Exception:
+                    self._falha_nuvem = time.time()      # sem internet: Kokoro por 2 minutos, depois tenta de novo
+            reserva = self.cfg.get("voz_reserva", "kokoro:pf_dora")
+            if self.tem_kokoro():
+                return self.sintetizar(texto, reserva if reserva.startswith("kokoro:") else "kokoro:pf_dora", velocidade)
+            if self.tem_piper():
+                return self.sintetizar(texto, "piper:" + self.voz_piper, velocidade)
+            raise RuntimeError("Sem internet para a voz neural e nenhuma voz local instalada.")
         if voz_id.startswith("kokoro:") and self.tem_kokoro():
             import numpy as np
             amostras, taxa = self.carregar_kokoro().create(texto, voice=voz_id.split(":", 1)[1], speed=velocidade,
