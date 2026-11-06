@@ -555,6 +555,8 @@ class Nucleo:
         self.modo_voz = False
         self._fluxo = False
         self.pendente: dict | None = None      # ação do Núcleo aguardando "sim/não/sempre/nunca"
+        from agente import Agente
+        self.agente = Agente(self)
 
     # ------------------------------------------------------------ roteador
     def _antes(self, texto: str, modo_voz: bool) -> dict | None:
@@ -615,7 +617,8 @@ class Nucleo:
         import acoes as _acoes
         acao = resposta.get("acao") or {}
         tipo = acao.get("tipo")
-        if resposta.get("tipo") != "confirmar" or tipo not in _acoes.ACOES_NUCLEO or getattr(self.app, "acoes", None) is None:
+        if resposta.get("agente") or resposta.get("tipo") != "confirmar" or tipo not in _acoes.ACOES_NUCLEO \
+                or getattr(self.app, "acoes", None) is None:
             return resposta
         descricao, risco = _acoes.ACOES_NUCLEO[tipo]
         decisao = self.app.acoes.permissao(f"nucleo:{tipo}")
@@ -664,6 +667,13 @@ class Nucleo:
             r["titulo"] = frase.split("\n")[0][:240]
         return r
 
+    def tempo_medio(self) -> dict | None:
+        ts = getattr(self, "_tempos", [])
+        if not ts:
+            return None
+        return {"total": round(sum(t["total"] for t in ts) / len(ts), 1), "respostas": len(ts),
+                "motor": ts[-1].get("motor")}
+
     def _depois(self, texto: str, resposta: dict) -> dict:
         resposta = self._resposta_direta(texto, resposta)
         resposta = self._aplicar_permissao(resposta)
@@ -672,6 +682,7 @@ class Nucleo:
             resposta["tempos"] = {"total": round(time.time() - self._t0, 2),
                                   "primeiro": round(self._t_primeiro - self._t0, 2) if getattr(self, "_t_primeiro", None) else None}
             self._t_primeiro = None
+            self._tempos = (getattr(self, "_tempos", []) + [{**resposta["tempos"], "motor": resposta.get("motor", "regras")}])[-20:]
         if self.ap is not None and resposta.get("tipo") not in ("erro",):
             resumo = "\n".join([resposta.get("titulo", "")] + resposta.get("linhas", []) +
                                [f"- {i.get('titulo', '')} {i.get('meta', '')} {i.get('valor', '')}".strip()
@@ -692,6 +703,10 @@ class Nucleo:
         antes = self._antes(texto, modo_voz)
         if antes is not None:
             return antes
+        r = self.agente.responder(texto)
+        if r is not None:
+            r["agente"] = True
+            return self._depois(texto, r)
         return self._depois(texto, self._rotear(texto))
 
     def perguntar_fluxo(self, texto: str, modo_voz: bool = False):
@@ -704,6 +719,17 @@ class Nucleo:
         antes = self._antes(texto, modo_voz)
         if antes is not None:
             yield {"evento": "fim", "resposta": self._depois(texto, antes) if antes.get("tipo") != "acao_resultado" else antes}
+            return
+        ag = self.agente.responder(texto)
+        if ag is not None:
+            ag["agente"] = True
+            frases = re.split(r"(?<=[.!?…])\s+", " ".join(ag["linhas"]))
+            yield {"evento": "inicio", "modelo": ag["modelo"], "origem": "local" if ag["local"] else "nuvem", "agente": True}
+            self._t_primeiro = time.time()
+            for f in frases:
+                if f.strip():
+                    yield {"evento": "texto", "texto": f.strip() + " "}
+            yield {"evento": "fim", "resposta": self._depois(texto, ag)}
             return
         self._fluxo = True
         try:
@@ -774,6 +800,33 @@ class Nucleo:
                                "decisões, processos e ações no computador.",
                                f"Quer que eu registre como tarefa: “{texto[:120]}”?"],
                        acao={"tipo": "tarefa", "rotulo": "Registrar tarefa", "dados": {"texto": texto[:200]}})
+
+    GLOBO = re.compile(r"\b(globo|mapa ao vivo|olho de deus|god'?s eye|visao de satelite|vista de satelite)\b|"
+                       r"\b(mostra|mostre|mostrar|ver|veja|abre|abra|abrir|exib\w*|cade|onde (estao|ta|tao)|tem algum|tem|ha algum|quais|quantos)\b"
+                       r"[^.?!]{0,45}\b(voo|voos|aviao|avioes|aviacao|trafego aereo|aeronave\w*|"
+                       r"navio|navios|barco\w*|embarca\w*|satelite|satelites|iss|estacao espacial|terremoto\w*|sismo|"
+                       r"incendio\w*|queimada\w*|fogo|camera\w*|cftv|radar|vento\w*|ciclone\w*|furacao|tempestade tropical|"
+                       r"foguete\w*|lancamento\w*|missao espacial|datacenter\w*|barragem\w*|represa|cabo submarino|cabos submarinos)\b")
+
+    def _globo(self, texto: str) -> dict:
+        plano = self.app.globo.interpretar(texto)
+        partes = []
+        if plano["camadas"]:
+            from globo import CAMADAS
+            nomes = {c: CAMADAS[c][0] for c in plano["camadas"]}
+            partes.append("mostrando " + ", ".join(nomes[c] for c in plano["camadas"]))
+        if plano["lugar"]:
+            partes.append(f"sobre {plano['lugar']}")
+        titulo = ("Globo: " + ", ".join(partes)) if partes else "Abrindo o globo ao vivo."
+        linhas = ["Dados públicos ao vivo, no seu computador."]
+        est = self.app.globo.estado()
+        if not est["rodando"] and not est["instalado"]:
+            return self._r("texto", "O globo ainda não está instalado.",
+                           linhas=["Rode scripts\\instalar_globo.bat uma vez (precisa do Node.js)."])
+        r = self._r("globo", titulo, linhas=linhas)
+        r["abrir_globo"] = {"texto": texto, "plano": plano}
+        r["nivel"] = "normal"
+        return r
 
     CRIAR_EVENTO = re.compile(r"\b(adicion\w*|marc\w*|agend\w*|coloc\w*|bot\w*|inclu\w*|cri[ae]\w*|registr\w*|anot\w*|salv\w*)\b"
                               r"[^.?!]{0,60}\b(compromisso|reuniao|evento|consulta|encontro|call|visita|almoco|jantar|"
@@ -868,6 +921,9 @@ class Nucleo:
             r = self._clima(texto, t)
             if r is not None:
                 return r
+
+        if getattr(self.app, "globo", None) is not None and self.app.globo.disponivel() and self.GLOBO.search(t):
+            return self._globo(texto)
 
         if re.search(r"^(pesquis\w*|busque|buscar|procure|procurar)\b.*\b(internet|web|online)\b|\bna (internet|web)\b", t):
             consulta = re.sub(r"(?i)^(pesquis\w*|busque|buscar|procure|procurar)\s+(na\s+)?(internet|web|online)\s*(sobre|por)?\s*", "", texto).strip() or texto
@@ -1001,6 +1057,7 @@ class Nucleo:
             f("consultar_compromissos", "Promessas: o que o usuário prometeu ou o que outros prometeram a ele.",
               {"pessoa": texto, "quem_deve": {"type": "string", "enum": ["eu", "outros", "todos"]}}),
             f("briefing_do_dia", "Resumo narrado do dia (bom dia)."),
+            f("globo_ao_vivo", "Abrir o globo 3D ao vivo (voos, navios, satélites, incêndios, terremotos, clima, câmeras) sobre um lugar.", {"pedido": texto}),
             f("responder_pergunta", "Qualquer outra pergunta, conversa ou busca na memória.", {"pergunta": texto}),
         ]
         acoes = getattr(self.app, "acoes", None)
@@ -1053,6 +1110,8 @@ class Nucleo:
             return self._ficha(str(a["pessoa"]))
         if nome == "consultar_compromissos":
             return self._compromissos(str(a.get("pessoa") or ""), {"eu": "eu_devo", "outros": "me_devem"}.get(a.get("quem_deve"), ""))
+        if nome == "globo_ao_vivo" and getattr(self.app, "globo", None) is not None and self.app.globo.disponivel():
+            return self._globo(texto)
         if nome == "briefing_do_dia":
             return {"tipo": "briefing", "titulo": "Preparando o briefing do dia.", "linhas": [], "itens": [], "local": True}
         if nome == "executar_acao" and a.get("acao"):
@@ -1886,6 +1945,20 @@ class Nucleo:
 # ================================================================ voz
 
 def texto_para_fala(r: dict) -> str:
+    if r.get("agente") or r.get("tipo") == "conversa":
+        return preparar_fala_simples(" ".join(r.get("linhas", [])))
+    return _texto_para_fala_cartao(r)
+
+
+def preparar_fala_simples(texto: str) -> str:
+    try:
+        from voz import preparar_fala
+        return preparar_fala(texto)
+    except Exception:
+        return texto
+
+
+def _texto_para_fala_cartao(r: dict) -> str:
     """Resume um cartão de resposta em poucas frases para ser falado."""
     tipo = r.get("tipo")
     linhas = [l for l in r.get("linhas", []) if l.strip()]

@@ -76,6 +76,7 @@ function irPara(tela){
   if (tela === "emails") carregarEmails();
   if (tela === "mente") carregarMente();
   if (tela === "pessoas") carregarPessoas();
+  if (tela === "globo" && !document.getElementById("tela-globo").querySelector("iframe")) abrirGlobo("");
 }
 
 /* ---------- estado geral ---------- */
@@ -99,6 +100,8 @@ async function carregarEstado(){
   else if (e.resumo) st.textContent = "Atualizado às " + new Date(e.resumo.gerado_em).toLocaleTimeString("pt-BR",{timeZone:e.fuso,hour:"2-digit",minute:"2-digit"}) + ".";
   else st.textContent = "";
   (e.notificacoes || []).forEach(mostrarNotificacao);
+  const tmEl = document.getElementById("n-tempo-medio");
+  if (tmEl) tmEl.textContent = e.tempo_medio ? `Tempo médio de resposta: ${String(e.tempo_medio.total).replace(".",",")} s (${e.tempo_medio.respostas} respostas). Cérebro: ${({local:"local", claude:"Claude", openai:"nuvem", regras:"regras"})[e.cerebro_modo] || e.cerebro_modo}.` : "";
   desenharHoje(e);
   return e;
 }

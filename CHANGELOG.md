@@ -1,5 +1,17 @@
 # Histórico de versões
 
+## 0.18.0
+- Novo cérebro em forma de agente: a IA conduz a conversa com o histórico das últimas mensagens, usa as ferramentas do Núcleo (agenda, financeiro, e-mails, memória, pessoas, promessas, clima, decisões, organizar, processos, globo, ações no computador) e responde em linguagem natural, curta e falável. As regras antigas ficam como reserva quando não há IA.
+- Ajustes > Cérebro: escolha quem pensa (Local, Claude com o crédito do Max, nuvem compatível ou regras), o modelo do Claude (Haiku, o mais rápido, ou Sonnet) e a espera do microfone.
+- Botão "Ligar modo natural": Claude + voz Thalita + ações simples sem perguntar, com aviso claro do que vai para a nuvem.
+- Voz: fala só a frase natural da resposta (nunca a lista do cartão); o microfone percebe o fim da fala mais rápido (600 ms, ajustável).
+- Status mostra o tempo médio das respostas.
+
+## 0.17.0
+- Globo 3D ao vivo (God's Eye View) como ação do Núcleo: "mostra os voos sobre BH", "tem incêndio perto de São Paulo?", "satélites agora", "abre o globo". Abre numa aba dentro do app, já no lugar e nas camadas certos. Dados públicos, no seu computador; não busca pessoas.
+- Entra como submódulo (scripts/adicionar_globo.bat) e instala com scripts/instalar_globo.bat. Liga em Ajustes > Globo ao vivo.
+- Pesado em 3D: recomendado no PC gamer; no notebook funciona, porém mais lento.
+
 ## 0.16.2
 - Perguntas de conselho e de sim/não recebem resposta direta primeiro ("Sim, leve o guarda-chuva: 86% de chance de chuva hoje"), com os dados embaixo como apoio:
   - no clima, por regras (guarda-chuva, vai chover, casaco, calor), mesmo sem a IA;

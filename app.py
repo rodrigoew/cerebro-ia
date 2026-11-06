@@ -49,6 +49,7 @@ from pessoas import Pessoas
 from bandeja import Bandeja
 from sincronizar import Sincronizador
 from vigia import Vigia
+from globo import Globo
 import atualizador
 import coletor as c
 from acoes import Acoes
@@ -192,6 +193,7 @@ class Aplicativo:
               local TEXT, notas TEXT, criado_em TEXT, atualizado_em TEXT)""")
         self.sinc = Sincronizador(self)
         self.vigia = Vigia(self)
+        self.globo = Globo(self)
         self.configurar_ia_remota()
         self.atualizacao = None
         self.presenca = {"ativo": False, "estado": "espera", "nivel": 0.0, "humor": "normal", "legenda": "", "quando": 0}
@@ -625,6 +627,18 @@ class Aplicativo:
                 cfg["cerebro"]["projetos"] = {a: projetos.get(a, [cerebro.sem_acento(a).split()[0]]) for a in areas}
             if "primeiro_uso" in d:
                 cfg["primeiro_uso"] = bool(d["primeiro_uso"])
+        elif secao == "cerebro":
+            ce = cfg.setdefault("cerebro", {})
+            if d.get("modo") in ("local", "claude", "openai", "regras"):
+                ce["modo"] = d["modo"]
+            if d.get("modelo_claude") in ("claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"):
+                ce["modelo_claude"] = d["modelo_claude"]
+            if "silencio_ms" in d:
+                cfg.setdefault("voz", {})["silencio_ms"] = max(350, min(1500, int(d["silencio_ms"])))
+        elif secao == "globo":
+            cfg.setdefault("globo", {}).update({"ativo": bool(d.get("ativo")), "iniciar_junto": bool(d.get("iniciar_junto"))})
+            if d.get("ativo") and not cfg["globo"].get("iniciar_junto"):
+                threading.Thread(target=self.globo.iniciar, args=(True,), daemon=True).start()
         elif secao == "microsoft":
             cfg["microsoft"] = {"client_id": str(d.get("client_id", "")).strip()[:80],
                                 "tenant": str(d.get("tenant") or "common").strip()[:80]}
@@ -1334,7 +1348,12 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                         "notificacoes": app.retirar_notificacoes(),
                         "atalho_global": app.cfg.get("atalho_global", "<ctrl>+<alt>+<space>"),
                         "sinc": {**app.sinc.cfg, "ultimo": app.sinc.ultimo, "tem_frase": bool(app.sinc.frase())},
-                        "vigia": app.vigia.estado(), "acesso_lan": bool(app.cfg.get("acesso_lan")), "ip_local": _ip_local(),
+                        "vigia": app.vigia.estado(), "globo": app.globo.estado(),
+                        "acesso_lan": bool(app.cfg.get("acesso_lan")), "ip_local": _ip_local(),
+                        "cerebro_modo": app.cfg.get("cerebro", {}).get("modo", "local"),
+                        "modelo_claude": app.cfg.get("cerebro", {}).get("modelo_claude", "claude-haiku-5-5"),
+                        "voz_silencio_ms": app.cfg.get("voz", {}).get("silencio_ms", 600),
+                        "tempo_medio": app.nucleo.tempo_medio(),
                         "alerta": app.alerta_global(), "licenca": app.licenca.status(),
                         "erro": app.ultimo_erro, "nome": app.cfg.get("nome", ""),
                         "agendas": [x.get("apelido", "Agenda") for x in app.cfg.get("calendarios_ics", [])] + ["Núcleo"],
@@ -1427,6 +1446,8 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                     self.send_header("Content-Length", str(len(corpo)))
                     self.end_headers()
                     self.wfile.write(corpo)
+                elif url.path == "/api/globo":
+                    self._json(200, app.globo.estado())
                 elif url.path == "/api/sinc":
                     self._json(200, {**app.sinc.cfg, "ultimo": app.sinc.ultimo, "tem_frase": bool(app.sinc.frase()), "este_ip": _ip_local(),
                                      "usar_central": app.cfg.get("llm_local", {}).get("usar_central", True),
@@ -1765,6 +1786,34 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                                              creationflags=0x08000000 if platform.system() == "Windows" else 0)
                             os._exit(0)
                         threading.Thread(target=reiniciar, daemon=True).start()
+                elif url.path == "/api/modo-natural":
+                    import acoes as _acoes
+                    corpo = self._corpo()
+                    ce = app.cfg.setdefault("cerebro", {})
+                    msgs = []
+                    if corpo.get("cerebro_nuvem") and provedores.chave("claude"):
+                        ce["modo"], ce["modelo_claude"] = "claude", ce.get("modelo_claude", "claude-haiku-5-5")
+                        msgs.append("cérebro: Claude")
+                    elif corpo.get("cerebro_nuvem"):
+                        msgs.append("cérebro continua local (falta a chave do Claude em Nuvem)")
+                    if corpo.get("voz_natural") and app.voz.tem_nuvem():
+                        app.cfg.setdefault("voz", {})["voz"] = "nuvem:pt-BR-ThalitaMultilingualNeural"
+                        app.voz.voz_id = "nuvem:pt-BR-ThalitaMultilingualNeural"
+                        msgs.append("voz: Thalita")
+                    if corpo.get("autonomia"):
+                        for tipo, (_, risco) in _acoes.ACOES_NUCLEO.items():
+                            if risco == "baixo":
+                                app.acoes.definir_permissao(f"nucleo:{tipo}", "sempre")
+                        msgs.append("ações simples sem perguntar")
+                    app.cfg.setdefault("voz", {})["silencio_ms"] = 550
+                    app.salvar_config()
+                    self._json(200, {"ok": True, "mensagem": "Modo natural ligado: " + ", ".join(msgs) + "."})
+                elif url.path == "/api/globo/abrir":
+                    corpo = self._corpo()
+                    msg = app.globo.iniciar(forcar=True)
+                    plano = app.globo.interpretar(str(corpo.get("texto", "")))
+                    self._json(200, {"ok": True, "mensagem": msg, "estado": app.globo.estado(), "plano": plano,
+                                     "url": app.globo.cfg["url"]})
                 elif url.path == "/api/presenca":
                     corpo = self._corpo()
                     for k in ("ativo", "estado", "humor", "legenda"):
@@ -2281,6 +2330,8 @@ def main() -> None:
     threading.Thread(target=lambda: print(app.iniciar_freellmapi()), daemon=True).start()
     if app.cfg.get("vigia", {}).get("ativo"):
         print(app.vigia.iniciar())
+    if app.cfg.get("globo", {}).get("ativo") and app.cfg.get("globo", {}).get("iniciar_junto"):
+        threading.Thread(target=app.globo.iniciar, daemon=True).start()
     threading.Thread(target=app.llm.aquecer, daemon=True).start()     # 1ª resposta já rápida
     print(f"{PRODUTO} rodando em {url}")
     if not args.sem_janela and app.cfg.get("bandeja", True):

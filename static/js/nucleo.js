@@ -231,6 +231,7 @@ async function pedir(texto, opcoes = {}){
     const cartao = cartaoResposta(r, {semDigitacao: !!vivo});
     if (vivo) vivo.replaceWith(cartao); else feed.append(cartao);
     palcoFinal(r, !!vivo);
+    if (r.abrir_globo) setTimeout(() => abrirGlobo(r.abrir_globo.texto), 300);
     if (!voz) legenda("", "");
     rolarFeed(); aplicarNivel(r);
     if (r.tipo === "nota" || r.acao) carregarNucleo();
@@ -272,6 +273,7 @@ async function pedir(texto, opcoes = {}){
 }
 function cartaoResposta(r, opc = {}){
   const selo = r.tipo === "erro" ? h("span",{class:"selo"}, h("i",{style:"background:var(--n-brasa);box-shadow:none"}), "Aviso")
+    : r.agente ? h("span",{class:"selo"}, h("i"), r.local ? `IA local (${r.modelo})` : `${({claude:"Claude", openai:"Nuvem"})[r.motor] || "Nuvem"} (${r.modelo})`)
     : r.tipo === "ia_local" ? h("span",{class:"selo"}, h("i"), `IA local (${r.modelo}), sem internet`)
     : r.local ? h("span",{class:"selo"}, h("i"), "Respondido localmente")
     : h("span",{class:"selo"}, h("i"), r.automatico
@@ -332,6 +334,7 @@ function cartaoResposta(r, opc = {}){
     }}, r.acao.rotulo + (r.acao.descricao ? ` (${r.acao.descricao})` : "")));
     if (r.tipo === "confirmar") botoes.append(h("button",{class:"n-btn", onclick:ev=>{ ev.target.closest(".n-botoes").remove(); estadoNucleo("espera"); }}, "Descartar"));
   }
+  if (r.abrir_globo) botoes.append(h("button",{class:"n-btn forte", onclick:()=>abrirGlobo(r.abrir_globo.texto)}, "Abrir o globo"));
   if (r.ics && !r.acao) botoes.append(h("a",{class:"n-btn", href:r.ics, download:""}, "Levar para o Google/Outlook (.ics)"));
   if (r.pode_enviar) botoes.append(h("button",{class:"n-btn brasa", onclick:()=>prepararEnvio(r.pergunta, r.contexto_ids || [], !!r.web)},
     r.web ? "Pesquisar com o Claude" : r.tipo === "sem_resultado" ? "Perguntar ao Claude" : "Aprofundar com o Claude"));
@@ -614,7 +617,7 @@ async function alternarConversa(sentinela=false){
       conversa.buffer.push(d); nucleo.nivel = Math.min(.5, rms*2.5);
       conversa.silencio = rms < limiar*.8 ? conversa.silencio + passoMs : 0;
       const duracao = conversa.buffer.length * passoMs;
-      if (conversa.silencio >= 850 || duracao > 30000){
+      if (conversa.silencio >= ((estado.cfg && estado.cfg.voz_silencio_ms) || 600) || duracao > 30000){
         conversa.falando = false; conversa.voz = 0; nucleo.nivel = 0;
         if (duracao - conversa.silencio > 350) enviarFala(conversa.buffer.slice()); else estadoNucleo(estadoOcioso());
         conversa.buffer = [];

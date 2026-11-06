@@ -98,7 +98,10 @@ async function secoesExtrasAjustes(){
   try { redeSec = await secRede(); } catch(e){}
   try { atuSec = await secAtualizacoes(); } catch(e){}
   try { permSec = await secPermissoes(); } catch(e){}
-  return [contasSec, nuvemSec, aparelhosSec, vigiaSec, licSec, redeSec, atuSec, permSec];
+  let globoSec = h("section",{class:"painel aj"}), cerebroSec = h("section",{class:"painel aj"});
+  try { globoSec = await secGlobo(); } catch(e){}
+  try { cerebroSec = await secCerebro(); } catch(e){}
+  return [contasSec, nuvemSec, aparelhosSec, vigiaSec, licSec, redeSec, atuSec, permSec, globoSec, cerebroSec];
 }
 
 /* ---------- Ajustes: aparelhos (sincronização), vigia e segurança ---------- */
@@ -110,6 +113,48 @@ async function secRede(){
     h("label",{style:"display:flex;gap:8px;align-items:center"}, liga, "Permitir acesso dos meus aparelhos na mesma rede"),
     h("div",{class:"acoes-aj"}, h("button",{class:"btn primario", onclick:async()=>{
       try { const r = await api("/api/rede",{method:"POST",body:JSON.stringify({ativo:liga.checked})}); avisar(r.mensagem); } catch(err){ avisar(err.message); } }},"Salvar")));
+}
+async function secGlobo(){
+  const e = (estado.cfg && estado.cfg.globo) || {};
+  const liga = h("input",{type:"checkbox", checked:!!e.ativo});
+  const junto = h("input",{type:"checkbox", checked:!!e.iniciar_junto});
+  return h("section",{class:"painel aj"}, h("h2",{},"Globo ao vivo"),
+    h("p",{class:"ajuda"},"Um globo 3D com dados públicos (voos, navios, satélites, incêndios, terremotos, clima, câmeras de trânsito). "
+      + "Você abre por voz ou texto: “mostra os voos sobre BH”, “tem incêndio perto de São Paulo?”. Roda no seu computador e não busca pessoas."),
+    e.instalado ? null : h("p",{class:"ajuda", style:"color:var(--vinho)"}, e.pasta_existe ? "Baixado, mas falta instalar: rode scripts\\instalar_globo.bat." : "Não baixado: rode scripts\\adicionar_globo.bat (precisa do Node.js 24)."),
+    h("label",{style:"display:flex;gap:8px;align-items:center"}, liga, "Ligar o globo ao vivo"),
+    h("label",{style:"display:flex;gap:8px;align-items:center;margin-top:6px"}, junto, "Iniciar junto com o Núcleo (deixa o globo pronto; usa mais memória da placa)"),
+    h("div",{class:"acoes-aj"}, h("button",{class:"btn primario", onclick:async()=>{
+      try { await api("/api/ajustes",{method:"PUT",body:JSON.stringify({secao:"globo", dados:{ativo:liga.checked, iniciar_junto:junto.checked}})}); avisar("Salvo."); await carregarEstado(); } catch(err){ avisar(err.message); } }},"Salvar"),
+      e.instalado ? h("button",{class:"btn", onclick:()=>abrirGlobo("")},"Abrir o globo") : null));
+}
+async function secCerebro(){
+  const e = estado.cfg || {};
+  const modo = h("select",{},
+    h("option",{value:"local", selected:e.cerebro_modo==="local"},"Local: IA deste computador (privado)"),
+    h("option",{value:"claude", selected:e.cerebro_modo==="claude"},"Claude: mais natural e autônomo (usa o crédito do Max)"),
+    h("option",{value:"openai", selected:e.cerebro_modo==="openai"},"Nuvem compatível (FreeLLMAPI)"),
+    h("option",{value:"regras", selected:e.cerebro_modo==="regras"},"Regras (antigo, sem conversa)"));
+  const modelo = h("select",{},
+    h("option",{value:"claude-haiku-5-5", selected:e.modelo_claude==="claude-haiku-5-5"},"Haiku: o mais rápido (recomendado para voz)"),
+    h("option",{value:"claude-sonnet-5-5", selected:e.modelo_claude==="claude-sonnet-5-5"},"Sonnet: mais inteligente, um pouco mais lento"));
+  const silencio = h("input",{type:"range", min:"350", max:"1200", step:"50", value:String(e.voz_silencio_ms || 600), style:"width:100%"});
+  const rot = h("span",{}, `${silencio.value} ms`);
+  silencio.oninput = () => rot.textContent = `${silencio.value} ms`;
+  const tm = e.tempo_medio;
+  return h("section",{class:"painel aj"}, h("h2",{},"Cérebro"),
+    h("p",{class:"ajuda"},"Quem conversa com você. A IA entende o pedido com o histórico da conversa, usa as ferramentas do Núcleo e responde em linguagem natural."),
+    h("label",{class:"rot"},"Quem pensa"), modo,
+    h("p",{class:"ajuda", style:"margin-top:6px"},"No Claude, suas perguntas e os dados das ferramentas (agenda, e-mails, finanças) vão para a Anthropic. No Local, nada sai do computador."),
+    h("label",{class:"rot"},"Modelo do Claude"), modelo,
+    h("label",{class:"rot"},"Espera para entender que você parou de falar"), h("div",{style:"display:flex;gap:10px;align-items:center"}, silencio, rot),
+    tm ? h("p",{class:"ajuda"}, `Tempo médio das últimas ${tm.respostas} respostas: ${String(tm.total).replace(".",",")} s.`) : null,
+    h("div",{class:"acoes-aj"},
+      h("button",{class:"btn primario", onclick:async()=>{
+        try { await api("/api/ajustes",{method:"PUT",body:JSON.stringify({secao:"cerebro", dados:{modo:modo.value, modelo_claude:modelo.value, silencio_ms:+silencio.value}})}); avisar("Salvo."); await carregarEstado(); } catch(err){ avisar(err.message); } }},"Salvar"),
+      h("button",{class:"btn", onclick:async()=>{
+        if (!confirm("Ligar o modo natural?\n\n• Cérebro: Claude (suas perguntas e dados vão para a Anthropic)\n• Voz: Thalita (o texto falado vai para a Microsoft)\n• Ações simples (agenda, lembretes, anotações, memória) sem perguntar\n\nVocê pode desfazer tudo aqui.")) return;
+        try { const r = await api("/api/modo-natural",{method:"POST",body:JSON.stringify({cerebro_nuvem:true, voz_natural:true, autonomia:true})}); avisar(r.mensagem); await carregarEstado(); carregarAjustes(); } catch(err){ avisar(err.message); } }},"Ligar modo natural")));
 }
 async function secAtualizacoes(){
   const sec = h("section",{class:"painel aj"}, h("h2",{},"Atualizações"));
