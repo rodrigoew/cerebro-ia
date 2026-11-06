@@ -127,6 +127,18 @@ def interpretar_winget(saida: str) -> list[dict]:
 
 # ================================================================ ferramentas
 
+# Ações do próprio Núcleo (além das ações no computador). Todas perguntam até você dizer "sempre" ou "nunca".
+ACOES_NUCLEO = {
+    "evento": ("Adicionar compromissos à agenda", "baixo"),
+    "lembrete": ("Criar lembretes", "baixo"),
+    "lancamento": ("Lançar contas no Financeiro", "medio"),
+    "nota": ("Fazer anotações", "baixo"),
+    "memoria": ("Guardar fatos sobre você na memória", "baixo"),
+    "guardar_itens": ("Guardar tarefas, ideias e decisões organizadas", "baixo"),
+    "tarefa": ("Registrar como tarefa o que ainda não sei fazer sozinho", "baixo"),
+}
+
+
 class Acoes:
     def __init__(self, app):
         self.app = app
@@ -148,6 +160,8 @@ class Acoes:
             con.execute("""CREATE TABLE IF NOT EXISTS acoes_log(
                 id INTEGER PRIMARY KEY, quando TEXT, ferramenta TEXT, parametros TEXT, risco TEXT,
                 ok INTEGER, resultado TEXT, origem TEXT)""")
+            con.execute("""CREATE TABLE IF NOT EXISTS permissoes_acoes(
+                ferramenta TEXT PRIMARY KEY, decisao TEXT NOT NULL, quando TEXT, vezes INTEGER DEFAULT 0)""")
 
     # ------------------------------------------------------------ catálogo
     def catalogo(self) -> list[dict]:
@@ -176,6 +190,38 @@ class Acoes:
     def risco_de(self, nome: str) -> str:
         return next((i["risco"] for i in self.catalogo() if i["nome"] == nome), "alto")
 
+    # ------------------------------------------------------------ permissões por ação (com memória)
+    def permissao(self, nome: str) -> str:
+        """'sempre', 'nunca' ou 'perguntar' (padrão)."""
+        linha = self.app.memoria.q("SELECT decisao FROM permissoes_acoes WHERE ferramenta = ?", (nome,))
+        return linha[0]["decisao"] if linha else "perguntar"
+
+    def definir_permissao(self, nome: str, decisao: str) -> None:
+        if decisao not in ("sempre", "nunca", "perguntar"):
+            raise ValueError("Decisão inválida.")
+        if decisao == "perguntar":
+            self.app.memoria.x("DELETE FROM permissoes_acoes WHERE ferramenta = ?", (nome,))
+        else:
+            self.app.memoria.x("""INSERT INTO permissoes_acoes(ferramenta, decisao, quando, vezes) VALUES(?,?,?,0)
+                                  ON CONFLICT(ferramenta) DO UPDATE SET decisao = excluded.decisao,
+                                  quando = excluded.quando""", (nome, decisao, self.app.agora().isoformat()))
+
+    def _contar_uso(self, nome: str) -> None:
+        self.app.memoria.x("UPDATE permissoes_acoes SET vezes = vezes + 1 WHERE ferramenta = ?", (nome,))
+
+    def permissoes(self) -> list[dict]:
+        memo = {l["ferramenta"]: l for l in self.app.memoria.q("SELECT * FROM permissoes_acoes")}
+        saida = []
+        for tipo, (descricao, risco) in ACOES_NUCLEO.items():
+            l = memo.get(f"nucleo:{tipo}")
+            saida.append({"nome": f"nucleo:{tipo}", "descricao": descricao, "risco": risco,
+                          "decisao": l["decisao"] if l else "perguntar", "vezes": l["vezes"] if l else 0})
+        for item in self.catalogo():
+            l = memo.get(item["nome"])
+            saida.append({"nome": item["nome"], "descricao": item["descricao"], "risco": item["risco"],
+                          "decisao": l["decisao"] if l else "perguntar", "vezes": l["vezes"] if l else 0})
+        return saida
+
     # ------------------------------------------------------------ planejar / executar
     def planejar(self, nome: str, parametros: dict, origem: str = "texto") -> dict:
         if not any(i["nome"] == nome for i in self.catalogo()):
@@ -183,30 +229,62 @@ class Acoes:
         parametros = self._validar(nome, dict(parametros or {}))
         risco = self.risco_de(nome)
         descricao = self.descrever(nome, parametros)
-        if risco == "baixo":
+        permissao = self.permissao(nome)
+        # você já disse "nunca" para esta ação
+        if permissao == "nunca":
+            return {"tipo": "acao_resultado", "titulo": "Não vou fazer isso.", "ok": False, "local": True, "itens": [],
+                    "linhas": [f"Você pediu para eu nunca {descricao['titulo'][0].lower()}{descricao['titulo'][1:]}. "
+                               "Posso voltar a perguntar em Ajustes > Permissões."]}
+        # você já autorizou sempre: faz direto (risco alto nunca entra aqui, por segurança)
+        if permissao == "sempre" and risco != "alto":
+            self._contar_uso(nome)
+            r = self.executar_agora(nome, parametros, origem + " (autorizado)")
+            r.setdefault("linhas", []).append("Feito automaticamente porque você autorizou esta ação. "
+                                              "Para rever, vá em Ajustes > Permissões.")
+            return r
+        # risco baixo sem decisão: continua instantâneo (abrir programa, pasta, site…)
+        if risco == "baixo" and permissao == "perguntar":
             return self.executar_agora(nome, parametros, origem)
+        # primeira vez (ou você escolheu "perguntar"): pede permissão, com opção de lembrar
         token = secrets.token_urlsafe(10)
         self.planos[token] = {"nome": nome, "parametros": parametros, "risco": risco, "criado": time.time(),
                               "origem": origem}
         self._limpar_planos()
-        return {"tipo": "confirmar", "titulo": descricao["titulo"], "linhas": descricao["linhas"], "itens": [],
-                "local": True, "risco": risco,
+        pode_lembrar = risco != "alto"       # "sempre" não vale para risco alto
+        linhas = list(descricao["linhas"])
+        if risco == "alto":
+            linhas.append("Esta é uma ação delicada: confirme com um clique, sempre.")
+        return {"tipo": "confirmar", "titulo": descricao["titulo"], "linhas": linhas, "itens": [],
+                "local": True, "risco": risco, "pergunta_permissao": True,
                 "acao": {"tipo": "ferramenta", "rotulo": descricao.get("botao", "Executar"), "token": token,
-                         "risco": risco}}
+                         "risco": risco, "ferramenta": nome, "pode_lembrar": pode_lembrar}}
 
     def ultimo_plano_por_voz(self) -> dict | None:
         self._limpar_planos()
         recentes = [(v["criado"], k, v) for k, v in self.planos.items() if time.time() - v["criado"] < 120]
         return max(recentes)[1:] if recentes else None
 
-    def confirmar(self, token: str, por_voz: bool = False) -> dict:
+    def confirmar(self, token: str, por_voz: bool = False, lembrar: bool = False) -> dict:
         plano = self.planos.get(token)
         if not plano:
             raise ValueError("Essa confirmação expirou. Peça a ação de novo.")
         if por_voz and plano["risco"] == "alto":
             raise PermissionError("Ações de risco alto só podem ser confirmadas com um clique na tela.")
         self.planos.pop(token, None)
-        return self.executar_agora(plano["nome"], plano["parametros"], plano["origem"] + (" (voz)" if por_voz else ""))
+        if lembrar and plano["risco"] != "alto":
+            self.definir_permissao(plano["nome"], "sempre")
+        r = self.executar_agora(plano["nome"], plano["parametros"], plano["origem"] + (" (voz)" if por_voz else ""))
+        if lembrar and plano["risco"] != "alto":
+            r.setdefault("linhas", []).append("Combinado: não pergunto mais para esta ação.")
+        return r
+
+    def recusar(self, token: str, nunca: bool = False) -> dict:
+        plano = self.planos.pop(token, None)
+        if plano and nunca:
+            self.definir_permissao(plano["nome"], "nunca")
+            return {"tipo": "acao_resultado", "titulo": "Não vou fazer, e não pergunto mais.", "ok": True, "local": True,
+                    "itens": [], "linhas": ["Pode reativar em Ajustes > Permissões."]}
+        return {"tipo": "acao_resultado", "titulo": "Tudo bem, não fiz nada.", "ok": True, "local": True, "itens": [], "linhas": []}
 
     def executar_agora(self, nome: str, parametros: dict, origem: str) -> dict:
         if nome in ("aplicar_atualizacoes", "verificar_atualizacoes", "organizar_downloads") or \

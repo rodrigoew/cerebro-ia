@@ -143,5 +143,5 @@ async function carregarAjustes(){
   const extras = await secoesExtrasAjustes();
   alvo.replaceChildren(h("div",{class:"topo"}, h("div",{}, h("h1",{},"Ajustes"), h("div",{class:"sub"},"As mudanças valem na hora e ficam salvas no config.json (com cópia de segurança)."))),
     h("div",{class:"aj-grade"}, h("div",{style:"display:grid;gap:18px"}, secAssist, extras[0], secVoz, secClima),
-      h("div",{style:"display:grid;gap:18px;align-content:start"}, extras[6], secBrief, extras[1], extras[5], extras[2], extras[3], extras[4])));
+      h("div",{style:"display:grid;gap:18px;align-content:start"}, extras[6], extras[7], secBrief, extras[1], extras[5], extras[2], extras[3], extras[4])));
 }

@@ -186,6 +186,10 @@ class Aplicativo:
         self.pessoas = Pessoas(self.memoria, self.llm, self)
         self.bandeja = None
         self._notificacoes: list[dict] = []
+        with self.memoria.trava, self.memoria._con() as con:
+            con.execute("""CREATE TABLE IF NOT EXISTS agenda_nucleo(
+              id INTEGER PRIMARY KEY, titulo TEXT NOT NULL, inicio TEXT NOT NULL, fim TEXT, dia_inteiro INTEGER DEFAULT 0,
+              local TEXT, notas TEXT, criado_em TEXT, atualizado_em TEXT)""")
         self.sinc = Sincronizador(self)
         self.vigia = Vigia(self)
         self.configurar_ia_remota()
@@ -773,7 +777,140 @@ class Aplicativo:
         return meus | {x.lower() for x in self.cfg.get("meus_enderecos_extras", [])}
 
     def eventos(self, de: dt.date, ate: dt.date):
-        return c.ler_agendas(self.cfg, de, ate, self.fuso)
+        lista, falhas = c.ler_agendas(self.cfg, de, ate, self.fuso)
+        idx = len(self.cfg.get("calendarios_ics", []))
+        for e in self.memoria.q("SELECT * FROM agenda_nucleo WHERE inicio >= ? AND inicio < ? ORDER BY inicio",
+                                (de.isoformat(), ate.isoformat())):
+            inicio = dt.datetime.fromisoformat(e["inicio"])
+            inicio = inicio if inicio.tzinfo else inicio.replace(tzinfo=self.fuso)
+            if e["dia_inteiro"]:
+                ini, fim = inicio.date(), inicio.date() + dt.timedelta(days=1)
+            else:
+                ini = inicio
+                fim = dt.datetime.fromisoformat(e["fim"]) if e.get("fim") else inicio + dt.timedelta(hours=1)
+                fim = fim if fim.tzinfo else fim.replace(tzinfo=self.fuso)
+            lista.append({"titulo": e["titulo"], "inicio": ini, "fim": fim, "dia_inteiro": bool(e["dia_inteiro"]),
+                          "pessoas": [], "agenda": "Núcleo", "agenda_idx": idx, "local": e.get("local") or "",
+                          "id_nucleo": e["id"]})
+        lista.sort(key=lambda x: (x["inicio"] if isinstance(x["inicio"], dt.datetime)
+                                  else dt.datetime.combine(x["inicio"], dt.time.min, self.fuso)))
+        return lista, falhas
+
+    def criar_evento(self, d: dict) -> int:
+        titulo = str(d.get("titulo", "")).strip()[:200]
+        if not titulo:
+            raise ValueError("Dê um título ao compromisso.")
+        data = dt.date.fromisoformat(d["data"])
+        hora = d.get("hora")
+        if hora:
+            if not re.fullmatch(r"\d{2}:\d{2}", hora):
+                raise ValueError("Hora inválida.")
+            inicio = dt.datetime.combine(data, dt.time.fromisoformat(hora), self.fuso)
+            dur = int(d.get("duracao_min") or 60)
+            fim = inicio + dt.timedelta(minutes=max(15, min(dur, 720)))
+            valores = (titulo, inicio.isoformat(), fim.isoformat(), 0)
+        else:
+            valores = (titulo, data.isoformat(), None, 1)
+        id_ = self.memoria.x("""INSERT INTO agenda_nucleo(titulo, inicio, fim, dia_inteiro, local, notas, criado_em, atualizado_em)
+                                VALUES(?,?,?,?,?,?,?,?)""", valores + (str(d.get("local") or "")[:200], str(d.get("notas") or "")[:1000],
+                                                                   self.agora().isoformat(), self.agora().isoformat()))
+        # lembrete automático: na véspera, e uma hora antes quando há horário
+        aviso_data = (data - dt.timedelta(days=1)).isoformat()
+        self.memoria.x("INSERT INTO lembretes(texto, data, hora, criado_em) VALUES(?,?,?,?)",
+                       (f"Amanhã: {titulo}" + (f" às {hora}" if hora else ""), aviso_data, "18:00", self.agora().isoformat()))
+        if hora:
+            antes = (dt.datetime.combine(data, dt.time.fromisoformat(hora)) - dt.timedelta(hours=1))
+            self.memoria.x("INSERT INTO lembretes(texto, data, hora, criado_em) VALUES(?,?,?,?)",
+                           (f"Em 1 hora: {titulo}", antes.date().isoformat(), antes.strftime("%H:%M"), self.agora().isoformat()))
+        return id_
+
+    def executar_acao_nucleo(self, tipo: str, dados: dict) -> dict:
+        """Executa uma ação do próprio Núcleo (já autorizada por você)."""
+        agora = self.agora().isoformat()
+        if tipo == "evento":
+            id_ = self.criar_evento(dados)
+            return {"ok": True, "id": id_, "ics": f"/api/agenda/evento/{id_}.ics",
+                    "mensagem": "Adicionado à agenda, com lembrete na véspera."}
+        if tipo in ("lembrete", "tarefa"):
+            texto = str(dados.get("texto", "")).strip()[:200]
+            if not texto:
+                raise ValueError("Lembrete vazio.")
+            data, hora = dados.get("data"), dados.get("hora")
+            if data:
+                dt.date.fromisoformat(data)
+            if hora and not re.fullmatch(r"\d{2}:\d{2}", hora):
+                raise ValueError("Hora inválida.")
+            id_ = self.memoria.x("INSERT INTO lembretes(texto, data, hora, criado_em) VALUES(?,?,?,?)", (texto, data, hora, agora))
+            return {"ok": True, "id": id_, "mensagem": "Tarefa registrada." if tipo == "tarefa" else "Lembrete criado."}
+        if tipo == "lancamento":
+            d = dict(dados)
+            ja_pago = bool(d.pop("ja_pago", False))
+            limpo = validar_lancamento(d)
+            campos = list(limpo) + ["origem", "criado_em"]
+            valores = list(limpo.values()) + ["nucleo", agora]
+            id_ = self.banco.executar(
+                f"INSERT INTO lancamentos({', '.join(campos)}) VALUES({', '.join('?' * len(campos))})", valores)
+            if ja_pago:
+                self.marcar_pago(id_, False)
+            return {"ok": True, "id": id_, "mensagem": "Lançado no Financeiro."}
+        if tipo == "guardar_itens":
+            g = self.mente.guardar_itens(dados.get("itens", []))
+            return {"ok": True, "mensagem": "Guardado: " + ", ".join(f"{v} {k}" for k, v in g.items())}
+        if tipo == "nota":
+            texto = str(dados.get("texto", ""))[:2000]
+            info = self.memoria.salvar_nota(texto, self.agora(), dados.get("tipo"))
+            if dados.get("tipo") == "ideia":
+                self.mente.criar_ideia(texto)
+                return {"ok": True, "id": info["id"], "mensagem": "Ideia guardada (também em Mente > Ideias)."}
+            return {"ok": True, "id": info["id"], "mensagem": "Anotado na memória."}
+        if tipo == "memoria":
+            texto = str(dados.get("texto", "")).strip()[:500]
+            if not texto:
+                raise ValueError("O que devo lembrar?")
+            id_ = self.aprendizado.adicionar_conhecimento(texto, "pessoal", "fato", agora, fixo=True)
+            return {"ok": True, "id": id_, "mensagem": "Guardado na memória. Vou usar isso nas próximas respostas."}
+        raise ValueError("Ação desconhecida.")
+
+    def lembrar_permissao(self, tipo: str, decisao: str) -> str:
+        """Guarda sua decisão ("sempre" ou "nunca") e cria uma memória sobre ela."""
+        import acoes as _acoes
+        if tipo not in _acoes.ACOES_NUCLEO:
+            return ""
+        risco = _acoes.ACOES_NUCLEO[tipo][1]
+        if decisao == "sempre" and risco == "alto":
+            return "Esta ação sempre vai pedir confirmação."
+        self.acoes.definir_permissao(f"nucleo:{tipo}", decisao)
+        descricao = _acoes.ACOES_NUCLEO[tipo][0].lower()
+        texto = (f"Autorizou o Núcleo a {descricao} sem perguntar." if decisao == "sempre"
+                 else f"Não quer que o Núcleo volte a {descricao}.")
+        try:
+            self.aprendizado.adicionar_conhecimento(texto, "preferências", "preferencia", self.agora().isoformat(), fixo=True)
+        except Exception:
+            pass
+        return ("Combinado: da próxima vez faço sem perguntar." if decisao == "sempre"
+                else "Combinado: não faço mais isso. Pode mudar em Ajustes > Permissões.")
+
+    def evento_ics(self, id_: int) -> bytes:
+        """Convite .ics: abre no Outlook, no Google Agenda ou no calendário do Windows/iPhone."""
+        e = self.memoria.q("SELECT * FROM agenda_nucleo WHERE id = ?", (id_,))
+        if not e:
+            raise KeyError("Compromisso não encontrado.")
+        e = e[0]
+        def fmt(v: str, dia: bool) -> str:
+            x = dt.datetime.fromisoformat(v)
+            return x.strftime("%Y%m%d") if dia else x.astimezone(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        dia = bool(e["dia_inteiro"])
+        ini = fmt(e["inicio"], dia)
+        fim = fmt(e["fim"], False) if e.get("fim") else (dt.date.fromisoformat(e["inicio"][:10]) + dt.timedelta(days=1)).strftime("%Y%m%d")
+        escapar = lambda t: (t or "").replace("\\", "\\\\").replace(",", "\\,").replace(";", "\\;").replace("\n", "\\n")
+        linhas = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Nucleo//PT-BR", "BEGIN:VEVENT",
+                  f"UID:nucleo-{e['id']}@cerebro-ia", f"DTSTAMP:{dt.datetime.now(dt.timezone.utc):%Y%m%dT%H%M%SZ}",
+                  f"DTSTART{';VALUE=DATE' if dia else ''}:{ini}", f"DTEND{';VALUE=DATE' if dia else ''}:{fim}",
+                  f"SUMMARY:{escapar(e['titulo'])}"]
+        if e.get("local"):
+            linhas.append(f"LOCATION:{escapar(e['local'])}")
+        linhas += ["END:VEVENT", "END:VCALENDAR"]
+        return "\r\n".join(linhas).encode()
 
     def indexar_memoria(self, dados: dict) -> None:
         """Guarda e-mails na memória local (SQLite) para o Núcleo pesquisar."""
@@ -1200,7 +1337,7 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                         "vigia": app.vigia.estado(), "acesso_lan": bool(app.cfg.get("acesso_lan")), "ip_local": _ip_local(),
                         "alerta": app.alerta_global(), "licenca": app.licenca.status(),
                         "erro": app.ultimo_erro, "nome": app.cfg.get("nome", ""),
-                        "agendas": [x.get("apelido", "Agenda") for x in app.cfg.get("calendarios_ics", [])],
+                        "agendas": [x.get("apelido", "Agenda") for x in app.cfg.get("calendarios_ics", [])] + ["Núcleo"],
                         "carteiras": app.carteiras(),
                         "categorias": app.cfg.get("categorias", []),
                         "hoje": app.agora().date().isoformat(),
@@ -1267,6 +1404,14 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                     if q.get("verificar") or app.atualizacao is None:
                         app.atualizacao = atualizador.verificar(AQUI)
                     self._json(200, {**app.atualizacao, "versao_local": VERSAO})
+                elif m := re.fullmatch(r"/api/agenda/evento/(\d+)\.ics", url.path):
+                    corpo = app.evento_ics(int(m.group(1)))
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/calendar; charset=utf-8")
+                    self.send_header("Content-Disposition", f'attachment; filename="compromisso-{m.group(1)}.ics"')
+                    self.send_header("Content-Length", str(len(corpo)))
+                    self.end_headers()
+                    self.wfile.write(corpo)
                 elif url.path == "/api/foco":
                     self._json(200, {"foco": app.foco()})
                 elif url.path == "/api/presenca":
@@ -1499,18 +1644,30 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                     self._json(200, {"ok": True, "contas": app.contas_listar()})
                 elif m := re.fullmatch(r"/api/contas/([^/]+)/senha", url.path):
                     conta = app.conta_por_apelido(unquote(m.group(1)))
-                    senha = str(self._corpo().get("senha", ""))
+                    senha = str(self._corpo().get("senha", "")).strip()
+                    if contas.tipo_de(conta) == "gmail":
+                        # a senha de app do Google vem em grupos com espaços (às vezes "espaços invisíveis"): remove todos
+                        senha = re.sub(r"[\s\u00a0\u2007\u202f]+", "", senha)
+                        if len(senha) != 16 or not senha.isalpha():
+                            raise ValueError("A senha de app do Google tem 16 letras. Confira se colou a senha de app, "
+                                             "e não a senha normal da conta.")
                     if not senha:
                         raise ValueError("Senha vazia.")
                     contas._keyring().set_password(c.SERVICO_KEYRING, conta["usuario"], senha)
-                    self._json(200, {"ok": True, "mensagem": "Senha guardada no cofre do sistema."})
+                    try:                      # já testa, para você saber na hora se deu certo
+                        msg = "Senha guardada. " + app.conta_testar(conta["apelido"])
+                        ok = True
+                    except Exception as erro:
+                        msg, ok = "Senha guardada, mas o teste falhou: " + contas.erro_amigavel(erro, contas.tipo_de(conta)), False
+                    self._json(200, {"ok": ok, "mensagem": msg})
                 elif m := re.fullmatch(r"/api/contas/([^/]+)/testar", url.path):
                     try:
                         self._json(200, {"ok": True, "mensagem": app.conta_testar(unquote(m.group(1)))})
                     except (KeyError, ValueError):
                         raise
                     except Exception as erro:
-                        self._json(200, {"ok": False, "mensagem": f"Falhou: {erro}"})
+                        conta = next((x for x in app.cfg.get("contas", []) if x["apelido"] == unquote(m.group(1))), {})
+                        self._json(200, {"ok": False, "mensagem": contas.erro_amigavel(erro, contas.tipo_de(conta) if conta else "imap")})
                 elif m := re.fullmatch(r"/api/contas/([^/]+)/microsoft", url.path):
                     conta = app.conta_por_apelido(unquote(m.group(1)))
                     self._json(200, contas.oauth().iniciar(conta["usuario"]))
@@ -1589,7 +1746,13 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                     horario = str(self._corpo().get("horario", ""))
                     self._json(200, {"mensagem": agendar(horario, app.caminho_cfg, retornar=True)})
                 elif url.path == "/api/acoes/confirmar":
-                    self._json(200, app.acoes.confirmar(str(self._corpo().get("token", ""))))
+                    corpo = self._corpo()
+                    self._json(200, app.acoes.confirmar(str(corpo.get("token", "")), lembrar=bool(corpo.get("lembrar"))))
+                elif url.path == "/api/acoes/recusar":
+                    corpo = self._corpo()
+                    self._json(200, app.acoes.recusar(str(corpo.get("token", "")), nunca=bool(corpo.get("nunca"))))
+                elif url.path == "/api/acoes/permissoes":
+                    self._json(200, {"permissoes": app.acoes.permissoes()})
                 elif url.path == "/api/atualizacao/aplicar":
                     python, pythonw = atualizador.python_do_projeto()
                     r = atualizador.atualizar(AQUI, print, python or sys.executable)
@@ -1701,39 +1864,18 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                                                       c.obter_chave_claude()))
                 elif url.path == "/api/cerebro/acao":
                     corpo = self._corpo()
-                    dados = corpo.get("dados") or {}
-                    if corpo.get("tipo") == "lembrete":
-                        texto = str(dados.get("texto", "")).strip()[:200]
-                        if not texto:
-                            raise ValueError("Lembrete vazio.")
-                        data = dados.get("data")
-                        if data:
-                            dt.date.fromisoformat(data)
-                        hora = dados.get("hora")
-                        if hora and not re.fullmatch(r"\d{2}:\d{2}", hora):
-                            raise ValueError("Hora inválida.")
-                        id_ = app.memoria.x("INSERT INTO lembretes(texto, data, hora, criado_em) VALUES(?,?,?,?)",
-                                            (texto, data, hora, app.agora().isoformat()))
-                        self._json(200, {"ok": True, "id": id_, "mensagem": "Lembrete criado."})
-                    elif corpo.get("tipo") == "lancamento":
-                        ja_pago = bool(dados.pop("ja_pago", False))
-                        limpo = validar_lancamento(dados)
-                        campos = list(limpo) + ["origem", "criado_em"]
-                        valores = list(limpo.values()) + ["nucleo", app.agora().isoformat()]
-                        id_ = app.banco.executar(
-                            f"INSERT INTO lancamentos({', '.join(campos)}) VALUES({', '.join('?' * len(campos))})",
-                            valores)
-                        if ja_pago:
-                            app.marcar_pago(id_, False)
-                        self._json(200, {"ok": True, "id": id_, "mensagem": "Lançado no Financeiro."})
-                    elif corpo.get("tipo") == "guardar_itens":
-                        g = app.mente.guardar_itens(dados.get("itens", []))
-                        self._json(200, {"ok": True, "mensagem": "Guardado: " + ", ".join(f"{v} {k}" for k, v in g.items())})
-                    elif corpo.get("tipo") == "nota":
-                        info = app.memoria.salvar_nota(str(dados.get("texto", "")), app.agora())
-                        self._json(200, {"ok": True, "id": info["id"], "mensagem": "Anotado."})
-                    else:
-                        raise ValueError("Ação desconhecida.")
+                    tipo, dados = str(corpo.get("tipo", "")), corpo.get("dados") or {}
+                    r = app.executar_acao_nucleo(tipo, dados)
+                    if corpo.get("lembrar"):
+                        r["mensagem"] += " " + app.lembrar_permissao(tipo, "sempre")
+                    app.nucleo.pendente = None
+                    self._json(200, r)
+                elif url.path == "/api/cerebro/recusar":
+                    corpo = self._corpo()
+                    tipo = str(corpo.get("tipo", ""))
+                    app.nucleo.pendente = None
+                    msg = app.lembrar_permissao(tipo, "nunca") if corpo.get("nunca") else "Tudo bem, não fiz nada."
+                    self._json(200, {"ok": True, "mensagem": msg})
                 elif m := re.fullmatch(r"/api/cerebro/conversas/(\d+)/avaliar", url.path):
                     app.aprendizado.avaliar(int(m.group(1)), bool(self._corpo().get("util")))
                     self._json(200, {"ok": True})
@@ -1785,6 +1927,9 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                 return
             caminho = urlparse(self.path).path
             try:
+                if k := re.fullmatch(r"/api/acoes/permissoes/([^/]+)", caminho):
+                    app.acoes.definir_permissao(unquote(k.group(1)), str(self._corpo().get("decisao", "perguntar")))
+                    return self._json(200, {"ok": True})
                 if k := re.fullmatch(r"/api/compromissos/(\d+)", caminho):
                     app.pessoas.atualizar(int(k.group(1)), self._corpo())
                     return self._json(200, {"ok": True})

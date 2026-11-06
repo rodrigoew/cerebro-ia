@@ -13,6 +13,19 @@ Telas:
 
 Na primeira vez, um assistente de **primeiros passos** pergunta seu nome, o nome do assistente, a voz e a cidade, e depois instala a IA local.
 
+## Novidades da 0.15
+
+- **Ele faz o que você pede, com a sua permissão.** Para agenda, lembretes, financeiro, anotações e memória, na primeira vez ele pergunta "Posso fazer?". Responda por botão ou por voz:
+  - **"sim":** faz só desta vez;
+  - **"sim, sempre":** faz e não pergunta mais;
+  - **"não":** não faz;
+  - **"nunca":** não faz e não oferece mais.
+  
+  As decisões viram memória e ficam em **Ajustes > Permissões**. Ações delicadas no computador (desligar, instalar atualizações) sempre pedem um clique.
+- **Agenda própria:** "marca reunião com o João dia 12 às 15h" ou "adicione esse compromisso no dia 11" criam o compromisso com lembretes na véspera e uma hora antes. O botão **.ics** leva o compromisso para o Google ou o Outlook.
+- **Memória:** "lembre que meu contador é o João Pereira" passa a ser usado nas respostas.
+- **Pedido que ele ainda não sabe fazer** (por exemplo, "compra pão"): ele diz com clareza e oferece registrar como tarefa.
+
 ## Novidades da 0.14
 
 - **Indicador discreto:** uma cápsula pequena no canto superior direito, quase transparente em espera.

@@ -554,6 +554,7 @@ class Nucleo:
         self.ultima_conversa_id: int | None = None
         self.modo_voz = False
         self._fluxo = False
+        self.pendente: dict | None = None      # ação do Núcleo aguardando "sim/não/sempre/nunca"
 
     # ------------------------------------------------------------ roteador
     def _antes(self, texto: str, modo_voz: bool) -> dict | None:
@@ -566,19 +567,76 @@ class Nucleo:
             r = self._r("nota", "Entendi, corrigido.", linhas=["Vou usar essa informação daqui em diante."])
             r["nivel"] = "aprendendo"
             return r
-        acoes = getattr(self.app, "acoes", None)
-        if acoes is not None and re.fullmatch(r"(sim|confirmo|confirma|confirmado|pode( fazer| seguir| ir)?|ok|manda ver|"
-                                              r"faz isso|pode sim|isso)[.!]?", t):
-            pendente = acoes.ultimo_plano_por_voz()
-            if pendente:
-                token, plano = pendente
-                if plano["risco"] == "alto":
-                    return self._r("texto", "Essa ação precisa de confirmação com um clique na tela.",
-                                   linhas=["É uma regra de segurança para ações de risco alto."])
-                return acoes.confirmar(token, por_voz=modo_voz)
+        resposta = self._responder_permissao(t, modo_voz)
+        if resposta is not None:
+            return resposta
         return None
 
+    SIM = re.compile(r"^\W*(sim|confirmo|confirma|confirmado|pode( fazer| seguir| ir| sim)?|ok|okay|manda ver|faz isso|faca isso|"
+                     r"isso|claro|beleza|fechado|autorizo|autorizado|vai|bora)\b")
+    SEMPRE = re.compile(r"\b(sempre|nao precisa (mais )?(me )?perguntar|sem (me )?perguntar|toda vez|pode fazer sempre|de agora em diante)\b")
+    NUNCA = re.compile(r"\b(nunca|jamais|nao (faca|faz) (mais )?isso|nunca mais)\b")
+    NAO = re.compile(r"^\W*(nao|cancela|cancelar|deixa|esquece|agora nao|melhor nao|negativo)\b")
+
+    def _responder_permissao(self, t: str, modo_voz: bool) -> dict | None:
+        """Entende sua resposta (sim / sim, sempre / não / nunca) à última pergunta de permissão."""
+        if len(t) > 80:
+            return None
+        acoes = getattr(self.app, "acoes", None)
+        plano = acoes.ultimo_plano_por_voz() if acoes is not None else None
+        pend = self.pendente if self.pendente and time.time() - self.pendente["criado"] < 300 else None
+        if not (plano or pend):
+            return None
+        sempre, nunca = bool(self.SEMPRE.search(t)), bool(self.NUNCA.search(t))
+        sim, nao = bool(self.SIM.search(t)) or sempre, bool(self.NAO.search(t)) and not sempre
+        if not (sim or nao or nunca):
+            return None
+        usar_plano = plano and (not pend or plano[1]["criado"] >= pend["criado"])
+        if usar_plano:
+            token, info = plano
+            if nunca or nao:
+                return acoes.recusar(token, nunca=nunca)
+            if info["risco"] == "alto":
+                return self._r("texto", "Essa ação precisa de confirmação com um clique na tela.",
+                               linhas=["É uma regra de segurança para ações de risco alto."])
+            return acoes.confirmar(token, por_voz=modo_voz, lembrar=sempre)
+        self.pendente = None
+        if nunca or nao:
+            msg = self.app.lembrar_permissao(pend["tipo"], "nunca") if nunca else "Tudo bem, não fiz nada."
+            return {"tipo": "acao_resultado", "titulo": msg, "linhas": [], "itens": [], "local": True, "ok": True, "nivel": "normal"}
+        x = self.app.executar_acao_nucleo(pend["tipo"], pend["dados"])
+        linhas = [self.app.lembrar_permissao(pend["tipo"], "sempre")] if sempre else []
+        return {"tipo": "acao_resultado", "titulo": x["mensagem"], "linhas": linhas, "itens": [], "local": True,
+                "ok": True, "ics": x.get("ics")}
+
+    def _aplicar_permissao(self, resposta: dict) -> dict:
+        """Ações do Núcleo: faz direto se você autorizou "sempre", recusa se disse "nunca", senão pergunta."""
+        import acoes as _acoes
+        acao = resposta.get("acao") or {}
+        tipo = acao.get("tipo")
+        if resposta.get("tipo") != "confirmar" or tipo not in _acoes.ACOES_NUCLEO or getattr(self.app, "acoes", None) is None:
+            return resposta
+        descricao, risco = _acoes.ACOES_NUCLEO[tipo]
+        decisao = self.app.acoes.permissao(f"nucleo:{tipo}")
+        if decisao == "sempre" and risco != "alto":
+            try:
+                x = self.app.executar_acao_nucleo(tipo, acao.get("dados") or {})
+            except Exception as erro:
+                return self._r("texto", "Não consegui fazer isso.", linhas=[str(erro)])
+            self.app.acoes._contar_uso(f"nucleo:{tipo}")
+            return {"tipo": "acao_resultado", "titulo": x["mensagem"], "itens": [], "local": True, "ok": True, "ics": x.get("ics"),
+                    "linhas": resposta.get("linhas", [])[:2] + ["Fiz sem perguntar porque você autorizou. Para rever: Ajustes > Permissões."]}
+        if decisao == "nunca":
+            return {"tipo": "acao_resultado", "titulo": "Não fiz.", "itens": [], "local": True, "ok": False, "nivel": "normal",
+                    "linhas": [f"Você me pediu para não {descricao.lower()}. Pode mudar em Ajustes > Permissões."]}
+        resposta["pergunta_permissao"] = True
+        acao["pode_lembrar"] = risco != "alto"
+        resposta["linhas"] = resposta.get("linhas", []) + ["Posso fazer? Responda “sim”, “sim, sempre”, “não” ou “nunca”."]
+        self.pendente = {"tipo": tipo, "dados": acao.get("dados") or {}, "criado": time.time()}
+        return resposta
+
     def _depois(self, texto: str, resposta: dict) -> dict:
+        resposta = self._aplicar_permissao(resposta)
         avaliar_nivel(resposta)
         if getattr(self, "_t0", None):
             resposta["tempos"] = {"total": round(time.time() - self._t0, 2),
@@ -674,6 +732,22 @@ class Nucleo:
         yield {"evento": "fim", "resposta": self._depois(texto, self._montar_ia(texto, resposta, fontes))}
 
     # ------------------------------------------------------------ roteamento automático para a nuvem (ex.: FreeLLMAPI)
+    IMPERATIVO = re.compile(r"^\W*(por favor,? )?(faz|faca|cria|crie|envia|envie|manda|mande|liga|ligue|compra|compre|paga|pague|"
+                            r"resolve|resolva|prepara|prepare|reserva|reserve|cancela|cancele|pede|peca|transfere|transfira|"
+                            r"publica|publique|posta|poste|baixa|baixe|instala|instale|contrata|contrate|renova|renove|"
+                            r"confirma com|avisa|avise|chama|chame|responde|responda)\b")
+
+    def _propor_tarefa(self, texto: str) -> dict:
+        """Pedido que ainda não sei executar: digo com clareza e ofereço registrar como tarefa."""
+        return self._r("confirmar", "Ainda não consigo fazer isso sozinho.",
+                       linhas=["Hoje eu sei: agenda, lembretes, financeiro, e-mails (rascunhos), anotações, memória, "
+                               "decisões, processos e ações no computador.",
+                               f"Quer que eu registre como tarefa: “{texto[:120]}”?"],
+                       acao={"tipo": "tarefa", "rotulo": "Registrar tarefa", "dados": {"texto": texto[:200]}})
+
+    CRIAR_EVENTO = re.compile(r"\b(adicion\w*|marc\w*|agend\w*|coloc\w*|bot\w*|inclu\w*|cri[ae]\w*|registr\w*|anot\w*|salv\w*)\b"
+                              r"[^.?!]{0,60}\b(compromisso|reuniao|evento|consulta|encontro|call|visita|almoco|jantar|"
+                              r"entrevista|aula|exame|viagem|na (minha )?agenda|no (meu )?calendario)\b")
     PERGUNTA_DIRETA = re.compile(r"^\W*(o que|o q|como|por que|porque|pq|qual|quais|quando|quem|onde|quanto|quantos|quantas|"
                                  r"explica|me explica|me fala|fala sobre|existe|e possivel|vale a pena|o que e|diferenca)\b")
     TEM_ACAO = re.compile(r"\b(abr[aei]\w*|instal\w*|deslig\w*|bloquei\w*|lembr\w*|anot\w*|lanc\w*|agend\w*|marc\w*|"
@@ -771,18 +845,11 @@ class Nucleo:
                            pode_enviar=True, pergunta=consulta, web=True)
 
         if m := re.match(r"^(anota|anote|anotar|registra|registre|nota|ideia|decisao)\b[:,]?\s*(.+)$", t, re.S):
-            corpo = texto[len(texto) - len(m.group(2)):]
+            corpo = texto[len(texto) - len(m.group(2)):].strip()
             tipo = {"ideia": "ideia", "decisao": "decisão"}.get(m.group(1))
-            info = self.m.salvar_nota(corpo, agora, tipo)
-            if tipo == "ideia" and getattr(self.app, "mente", None) is not None:
-                self.app.mente.criar_ideia(corpo)
-                info["tipo"] = "ideia (também em Mente > Ideias)"
-            return self._r("nota", "Anotado na memória.", linhas=[
-                f"Tipo: {info['tipo']}" + (f". Projeto: {info['projeto']}" if info["projeto"] else "")
-                + (f". Pessoas: {', '.join(info['pessoas'])}" if info["pessoas"] else "") + "."],
-                acao=({"tipo": "lembrete", "rotulo": "Criar lembrete", "dados": info["sugestao_lembrete"],
-                       "descricao": self._desc_lembrete(info["sugestao_lembrete"])}
-                      if info.get("sugestao_lembrete") else None))
+            rotulo = {"ideia": "Guardar a ideia?", "decisão": "Registrar a decisão?"}.get(tipo, "Anotar?")
+            return self._r("confirmar", rotulo, linhas=[corpo[:1].upper() + corpo[1:]],
+                           acao={"tipo": "nota", "rotulo": "Anotar", "dados": {"texto": corpo, "tipo": tipo}})
 
         if re.search(r"\b(me lembr\w*|lembre-me|lembrar de|lembrete)\b", t):
             return self._propor_lembrete(texto, agora)
@@ -820,7 +887,15 @@ class Nucleo:
                      r"recebi|saldo|despesas?|contas?|vencimentos?|vence)\b", t):
             return self._financeiro(texto, agora)
 
-        if re.search(r"\b(agenda|reunia\w*|reunioes|compromisso\w*|evento\w*|livre|ocupado|tenho (hoje|amanha))\b", t):
+        if m := re.match(r"^\W*(lembr\w* (de )?que|lembre-se (de )?que|guard\w* (na memoria )?que|saiba que|memoriz\w*( que)?|"
+                         r"nao esquec\w* (de )?que|grav\w* que|registr\w* que|aprenda que)\s+(.{4,})$", t, re.S):
+            fato = texto[len(texto) - len(m.group(len(m.groups()))):].strip()
+            return self._r("confirmar", "Guardar na memória?", linhas=[fato[:1].upper() + fato[1:]],
+                           acao={"tipo": "memoria", "rotulo": "Guardar", "dados": {"texto": fato[:1].upper() + fato[1:]}})
+        if self.CRIAR_EVENTO.search(t):
+            return self._propor_evento(texto, agora)
+        if re.search(r"\b(agenda|reunia\w*|reunioes|compromisso\w*|evento\w*|livre|ocupado|tenho (hoje|amanha)|"
+                     r"o que (eu )?tenho|tenho algo|minha semana|meu dia)\b", t):
             return self._agenda(texto, agora)
 
         if self._ia_ok() and self.PERGUNTA_DIRETA.match(sem_acento(texto)) and not self.TEM_ACAO.search(sem_acento(texto)):
@@ -830,6 +905,8 @@ class Nucleo:
                 r = self._rotear_por_ferramentas(texto, agora)
                 if r is not None:
                     return r
+                if self.IMPERATIVO.match(t):
+                    return self._propor_tarefa(texto)
                 return self._responder_com_ia(texto)
             except _SemFerramentas:
                 pass
@@ -843,6 +920,8 @@ class Nucleo:
             if intencao in rotas:
                 return rotas[intencao]()
             return self._responder_com_ia(texto)
+        if self.IMPERATIVO.match(t):
+            return self._propor_tarefa(texto)
         nuvem = self._tentar_nuvem(texto, [])
         if nuvem is not None:
             return nuvem
@@ -878,6 +957,7 @@ class Nucleo:
             f("consultar_financeiro", "Valores, contas a pagar/receber, gastos, saldo, vencimentos.", {"pergunta": texto}),
             f("listar_pendencias", "O que está em aberto: lembretes, tarefas, contas, e-mails a responder."),
             f("criar_lembrete", "Pedir para ser lembrado de algo numa data/hora.", {"o_que": texto, "quando": texto}, ["o_que"]),
+            f("adicionar_compromisso", "Adicionar/marcar/agendar um compromisso, reunião ou evento na agenda.", {"o_que": texto, "quando": texto}),
             f("lancar_conta", "Registrar conta a pagar/receber ou pagamento feito.", {"descricao": texto}),
             f("previsao_tempo", "Clima, temperatura, chuva.", {"cidade": texto}),
             f("ajudar_a_decidir", "O usuário está em dúvida entre opções e quer ajuda para decidir.", {"decisao": texto}, ["decisao"]),
@@ -919,6 +999,8 @@ class Nucleo:
             return self._pendencias(agora)
         if nome == "criar_lembrete":
             return self._propor_lembrete(texto, agora)
+        if nome == "adicionar_compromisso":
+            return self._propor_evento(texto, agora)
         if nome == "lancar_conta":
             return self._propor_lancamento(texto, agora)
         if nome == "previsao_tempo":
@@ -989,6 +1071,8 @@ class Nucleo:
     # ------------------------------------------------------------ secretária: decisões, ideias, processos, pensamentos
     def _mente(self, texto: str, t: str) -> dict | None:
         mt = self.app.mente
+        if re.match(r"^(organiza\w*|arruma\w*)\b.{0,20}\b(downloads|pasta|computador|arquivos|area de trabalho|desktop)\b", t):
+            return None       # deixa para as ações no computador (organizar_downloads)
         if m := re.match(r"^(organiza|organize|organizar|despej\w*|brain ?dump)\b[^:]*:?\s*(.{10,})$", t, re.S):
             corpo = texto[len(texto) - len(m.group(2)):]
             itens = mt.organizar(corpo)["itens"]
@@ -1113,7 +1197,7 @@ class Nucleo:
                     return plan("aplicar_atualizacoes", ids=ids)
                 return self._r("texto", f"Não encontrei “{alvo}” na última lista de atualizações.",
                                linhas=["Peça “verificar atualizações” para atualizar a lista."])
-            if re.search(r"organiz\w*\s+(a\s+)?(pasta\s+)?(de\s+|dos\s+)?downloads?", t):
+            if re.search(r"(organiz\w*|arrum\w*|limp\w*)\s+.{0,20}?downloads?", t):
                 return plan("organizar_downloads")
             if re.search(r"\bbloque\w*\s+(o\s+|a\s+)?(computador|pc|tela|notebook|maquina)", t):
                 return plan("bloquear_tela")
@@ -1359,6 +1443,56 @@ class Nucleo:
                        linhas=[dados["texto"], "Quando: " + self._desc_lembrete(dados) + "."],
                        acao={"tipo": "lembrete", "rotulo": "Criar lembrete", "dados": dados,
                              "descricao": self._desc_lembrete(dados)})
+
+    # ------------------------------------------------------------ agenda: criar compromisso
+    def _propor_evento(self, texto: str, agora: dt.datetime) -> dict:
+        """Entende o pedido (inclusive "esse compromisso", usando a conversa anterior) e pede confirmação."""
+        anterior = " ".join(p for p, _ in self.historico[-2:])
+        refere_anterior = bool(re.search(r"\b(esse|essa|este|esta|isso|aquilo|ele|ela|o mesmo)\b", sem_acento(texto)))
+        dados = None
+        if self._ia_ok():
+            contexto = (f"Mensagens anteriores do usuário: {anterior}\n" if anterior else "") + f"Pedido atual: {texto}"
+            try:
+                d = self.llm.json([{"role": "user", "content": contexto}],
+                                  f"Hoje é {agora:%d/%m/%Y} ({['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'][agora.weekday()]}). Extraia o compromisso que o usuário quer adicionar à "
+                                  "agenda. Se o pedido atual disser 'esse compromisso' ou similar, o título vem das mensagens "
+                                  "anteriores. Não invente: deixe vazio o que não foi dito. Responda só com JSON: "
+                                  '{"titulo": "curto", "data": "AAAA-MM-DD", "hora": "HH:MM ou vazio", '
+                                  '"duracao_min": numero ou 0, "local": "ou vazio"}', max_tokens=200)
+                if d.get("titulo") and d.get("data"):
+                    dt.date.fromisoformat(d["data"])
+                    dados = {"titulo": str(d["titulo"])[:200], "data": d["data"],
+                             "hora": d.get("hora") if re.fullmatch(r"\d{2}:\d{2}", str(d.get("hora") or "")) else None,
+                             "duracao_min": int(d.get("duracao_min") or 60), "local": str(d.get("local") or "")[:200]}
+            except Exception:
+                dados = None
+        if dados is None:                   # sem IA: regras
+            data, hora = interpretar_data(texto, agora)
+            if not data and refere_anterior and anterior:
+                data, hora = interpretar_data(anterior, agora)
+            titulo = re.sub(r"(?i)^.*?\b(adicion\w*|marc\w*|agend\w*|coloc\w*|bot\w*|inclu\w*|cri[ae]\w*|registr\w*|anot\w*|salv\w*)\b\s*", "", texto)
+            titulo = re.sub(r"(?i)\b(na (minha )?agenda|no (meu )?calendario|para mim|pra mim|por favor)\b", " ", titulo)
+            titulo = re.sub(r"(?i)\b(depois de amanh[ãa]|amanh[ãa]|hoje|(n?o )?(dia )?\d{1,2}/\d{1,2}(/\d{2,4})?|(n?o )?dia \d{1,2}( de \w+)?|"
+                            r"(à|a|á)s? \d{1,2}(h|:)\d{0,2}h?|\d{1,2}h\d{0,2}|(na |no )?(segunda|ter[çc]a|quarta|quinta|sexta|s[áa]bado|domingo)(-feira)?)\b", " ", titulo)
+            titulo = re.sub(r"\s+", " ", titulo).strip(" ,.-")
+            if refere_anterior and anterior and (not titulo or re.fullmatch(r"(?i)(esse|essa|este|esta|o|um|uma)?\s*(compromisso|evento|reuni[ãa]o)?", titulo)):
+                titulo = anterior[:120]
+            titulo = re.sub(r"(?i)^(eu )?(tenho|vou ter|terei|preciso ir (a|ao|na|no)|vou (a|ao|na|no))\s+", "", titulo)
+            titulo = re.sub(r"(?i)^(uma?|o|a)\s+", "", titulo).strip(" ,.-")
+            dados = {"titulo": (titulo or "Compromisso")[:1].upper() + (titulo or "Compromisso")[1:200],
+                     "data": data.isoformat() if data else None, "hora": hora.strftime("%H:%M") if hora else None,
+                     "duracao_min": 60, "local": ""}
+        if not dados.get("data"):
+            return self._r("texto", "Para quando é esse compromisso?",
+                           linhas=[f"Entendi: {dados['titulo']}. Diga a data (e o horário, se tiver), por exemplo “dia 11 às 14h”."])
+        d_ = dt.date.fromisoformat(dados["data"])
+        quando = f"{d_:%d/%m} ({['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'][d_.weekday()]})"
+        linhas = [dados["titulo"], f"Quando: {quando}" + (f", às {dados['hora']}" if dados.get("hora") else ", dia inteiro") + "."]
+        if dados.get("local"):
+            linhas.append(f"Onde: {dados['local']}.")
+        linhas.append("Vou lembrar você na véspera" + (" e uma hora antes." if dados.get("hora") else "."))
+        return self._r("confirmar", "Adicionar à agenda?", linhas=linhas,
+                       acao={"tipo": "evento", "rotulo": "Adicionar à agenda", "dados": dados})
 
     # ------------------------------------------------------------ lançamentos
     def _propor_lancamento(self, texto: str, agora: dt.datetime) -> dict:

@@ -25,4 +25,5 @@ dist/
 Thumbs.db
 .venv-build/
 
+# o lançador vem de Releases; não vai para o Git
 Nucleo.exe

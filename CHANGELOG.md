@@ -1,5 +1,21 @@
 # Histórico de versões
 
+## 0.16.0
+- Permissões por ação com memória: na primeira vez o Núcleo pergunta (Fazer e não perguntar mais / Fazer só agora / Agora não / Nunca) e passa a respeitar a sua escolha. Toda ação fica no histórico, virando memória.
+- Ações delicadas (instalar atualizações, desligar) sempre pedem confirmação por clique, mesmo autorizadas.
+- Nova tela Ajustes > Permissões das ações, para rever e mudar cada decisão.
+- Corrigido: "organiza meus downloads" agora é a ação da pasta, e "organiza isso: ..." segue organizando pensamentos.
+
+## 0.15.0
+- Permissões para tudo o que o Núcleo faz (agenda, lembretes, financeiro, anotações, memória, tarefas), no mesmo modelo das ações no computador: na primeira vez ele pergunta; você responde (botão ou voz) "sim", "sim, sempre", "não" ou "nunca", e a decisão é lembrada e vira memória. Tudo editável em Ajustes > Permissões.
+- "Lembre que…" guarda fatos sobre você na memória (com permissão).
+- Pedidos que ele ainda não sabe executar: diz com clareza e oferece registrar como tarefa.
+- Agenda própria do Núcleo: "adiciona/marca/agenda um compromisso…" cria o evento (com confirmação), lembrete na véspera e 1 hora antes, aparece junto das outras agendas e pode ser levado ao Google/Outlook por um convite .ics.
+- Entende "esse compromisso" a partir da mensagem anterior.
+- Corrigido: pedidos de adicionar compromisso eram tratados como consulta; "o que tenho no dia X?" volta a consultar a agenda.
+- Gmail: mensagens de erro claras; a senha de app é limpa de espaços, validada e testada ao guardar.
+- O Nucleo.exe não vai mais para o Git.
+
 ## 0.14.0
 - Indicador flutuante compacto: cápsula de 150×40 no canto superior direito, quase transparente em espera.
 - Respostas mais rápidas:

@@ -319,3 +319,20 @@ def salvar_rascunho(m: imaplib.IMAP4_SSL, mensagem: bytes) -> str:
 def link_mailto(para: str, assunto: str, corpo: str) -> str:
     return "mailto:" + urllib.parse.quote(para or "") + "?" + urllib.parse.urlencode(
         {"subject": assunto, "body": corpo}, quote_via=urllib.parse.quote)
+
+
+def erro_amigavel(erro: Exception, tipo: str = "imap") -> str:
+    """Traduz os erros mais comuns dos provedores para algo que dá para resolver."""
+    t = str(erro)
+    if "Application-specific password required" in t or "185833" in t:
+        return ("O Google exige uma senha de app (não a senha normal da conta). Gere em "
+                "myaccount.google.com/apppasswords, com a verificação em duas etapas ligada, e cole aqui.")
+    if "Invalid credentials" in t or "AUTHENTICATIONFAILED" in t or "LOGIN failed" in t:
+        return ("Usuário ou senha recusados. No Gmail, use a senha de app; em outros provedores, confira "
+                "a senha e se o acesso IMAP está liberado." if tipo != "microsoft" else
+                "A Microsoft recusou o login. Clique em Reconectar.")
+    if "IMAP access is disabled" in t or "Please enable IMAP" in t:
+        return "O IMAP está desligado nesta conta. Ative nas configurações de e-mail do provedor."
+    if "timed out" in t or "getaddrinfo" in t or "Name or service not known" in t:
+        return "Não consegui alcançar o servidor. Confira o endereço do servidor e a internet."
+    return f"Falhou: {t[:200]}"

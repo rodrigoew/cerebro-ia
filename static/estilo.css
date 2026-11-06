@@ -727,3 +727,5 @@ body.modo-palco .area{padding:0}
 .g-vazio{color:var(--n-suave);font-size:13px;margin:4px 0}
 
 .n-tempo{margin-left:8px;font-size:11px;color:var(--n-suave);opacity:.8}
+.perm{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--linha)}
+.perm select{border:1px solid var(--linha);border-radius:7px;padding:5px 8px;background:var(--painel)}

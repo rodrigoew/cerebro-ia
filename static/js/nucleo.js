@@ -289,24 +289,50 @@ function cartaoResposta(r, opc = {}){
   }
   const botoes = h("div",{class:"n-botoes"});
   if (r.acao && r.acao.tipo === "ferramenta"){
-    botoes.append(h("button",{class:"n-btn forte", onclick:async ev=>{
-      ev.target.disabled = true;
-      try { const x = await api("/api/acoes/confirmar",{method:"POST",body:JSON.stringify({token:r.acao.token})});
-        ev.target.closest(".n-botoes").remove();
-        document.getElementById("n-feed").append(cartaoResposta(x)); rolarFeed(); aplicarNivel(x); estadoNucleo(estadoOcioso());
-        if (conversa.ativa) falarCartao(x); }
-      catch(err){ avisar(err.message); ev.target.disabled = false; }
-    }}, r.acao.rotulo || "Executar"));
-    botoes.append(h("button",{class:"n-btn", onclick:ev=>{ ev.target.closest(".n-botoes").remove(); estadoNucleo(estadoOcioso()); }}, "Cancelar"));
+    const concluir = x => { document.getElementById("n-feed").append(cartaoResposta(x)); rolarFeed(); aplicarNivel(x); estadoNucleo(estadoOcioso()); if (conversa.ativa) falarCartao(x); };
+    const confirmar = async (ev, lembrar) => { ev.target.disabled = true;
+      try { const x = await api("/api/acoes/confirmar",{method:"POST",body:JSON.stringify({token:r.acao.token, lembrar})});
+        ev.target.closest(".n-botoes").remove(); concluir(x);
+        if (x.ics) document.querySelector("#n-feed .n-resp:last-child")?.append(h("a",{class:"n-btn", href:x.ics, download:""}, "Levar para o Google/Outlook (.ics)")); }
+      catch(err){ avisar(err.message); ev.target.disabled = false; } };
+    const recusar = async (ev, nunca) => { try { const x = await api("/api/acoes/recusar",{method:"POST",body:JSON.stringify({token:r.acao.token, nunca})});
+      ev.target.closest(".n-botoes").remove(); concluir(x); } catch(err){ avisar(err.message); } };
+    if (r.pergunta_permissao && r.acao.pode_lembrar){
+      botoes.append(h("button",{class:"n-btn forte", onclick:ev=>confirmar(ev, true)}, "Fazer e não perguntar mais"));
+      botoes.append(h("button",{class:"n-btn", onclick:ev=>confirmar(ev, false)}, "Fazer só agora"));
+      botoes.append(h("button",{class:"n-btn", onclick:ev=>recusar(ev, false)}, "Agora não"));
+      botoes.append(h("button",{class:"n-btn perigo", onclick:ev=>recusar(ev, true)}, "Nunca"));
+    } else {
+      botoes.append(h("button",{class:"n-btn forte", onclick:ev=>confirmar(ev, false)}, r.acao.rotulo || "Executar"));
+      botoes.append(h("button",{class:"n-btn", onclick:ev=>recusar(ev, false)}, "Cancelar"));
+    }
+  } else if (r.acao && r.pergunta_permissao){
+    const concluir = x => { const res = {tipo:"acao_resultado", titulo:x.mensagem, linhas:[], itens:[], local:true, ok:true, ics:x.ics};
+      document.getElementById("n-feed").append(cartaoResposta(res)); rolarFeed(); aplicarNivel(res); palcoFinal(res, false);
+      estadoNucleo(estadoOcioso()); carregarNucleo(); acompanharSilencioso(); if (conversa.ativa) falarCartao(res); };
+    const fazer = async (ev, lembrar) => { ev.target.disabled = true;
+      try { const x = await api("/api/cerebro/acao",{method:"POST",body:JSON.stringify({tipo:r.acao.tipo, dados:r.acao.dados, lembrar})});
+        ev.target.closest(".n-botoes").remove(); concluir(x); }
+      catch(err){ avisar(err.message); ev.target.disabled = false; } };
+    const recusar = async (ev, nunca) => {
+      try { const x = await api("/api/cerebro/recusar",{method:"POST",body:JSON.stringify({tipo:r.acao.tipo, nunca})});
+        ev.target.closest(".n-botoes").remove(); concluir({...x, ok:true}); } catch(err){ avisar(err.message); } };
+    if (r.acao.pode_lembrar) botoes.append(h("button",{class:"n-btn forte", onclick:ev=>fazer(ev, true)}, "Sim, e não precisa perguntar mais"));
+    botoes.append(h("button",{class:"n-btn" + (r.acao.pode_lembrar ? "" : " forte"), onclick:ev=>fazer(ev, false)}, "Sim, só desta vez"));
+    botoes.append(h("button",{class:"n-btn", onclick:ev=>recusar(ev, false)}, "Agora não"));
+    botoes.append(h("button",{class:"n-btn perigo", onclick:ev=>recusar(ev, true)}, "Nunca"));
   } else if (r.acao){
     botoes.append(h("button",{class:"n-btn forte", onclick:async ev=>{
       ev.target.disabled = true;
       try { const x = await api("/api/cerebro/acao",{method:"POST",body:JSON.stringify({tipo:r.acao.tipo, dados:r.acao.dados})});
-        ev.target.textContent = x.mensagem; avisar(x.mensagem); estadoNucleo("espera"); carregarNucleo(); acompanharSilencioso(); }
+        ev.target.textContent = x.mensagem; avisar(x.mensagem); estadoNucleo("espera"); carregarNucleo(); acompanharSilencioso();
+        definirHumor("sucesso", 5000); emitirOnda("sucesso");
+        if (x.ics) ev.target.closest(".n-botoes").append(h("a",{class:"n-btn", href:x.ics, download:""}, "Levar para o Google/Outlook (.ics)")); }
       catch(err){ avisar(err.message); ev.target.disabled = false; }
     }}, r.acao.rotulo + (r.acao.descricao ? ` (${r.acao.descricao})` : "")));
     if (r.tipo === "confirmar") botoes.append(h("button",{class:"n-btn", onclick:ev=>{ ev.target.closest(".n-botoes").remove(); estadoNucleo("espera"); }}, "Descartar"));
   }
+  if (r.ics && !r.acao) botoes.append(h("a",{class:"n-btn", href:r.ics, download:""}, "Levar para o Google/Outlook (.ics)"));
   if (r.pode_enviar) botoes.append(h("button",{class:"n-btn brasa", onclick:()=>prepararEnvio(r.pergunta, r.contexto_ids || [], !!r.web)},
     r.web ? "Pesquisar com o Claude" : r.tipo === "sem_resultado" ? "Perguntar ao Claude" : "Aprofundar com o Claude"));
   if (temVozLocal()) botoes.append(h("button",{class:"n-btn", onclick:()=>falarCartao(r)}, "Ouvir"));

@@ -94,10 +94,11 @@ async function secoesExtrasAjustes(){
   let aparelhosSec = h("section",{class:"painel aj"}), vigiaSec = h("section",{class:"painel aj"});
   try { aparelhosSec = await secAparelhos(); } catch(e){}
   try { vigiaSec = await secVigia(); } catch(e){}
-  let redeSec = h("section",{class:"painel aj"}), atuSec = h("section",{class:"painel aj"});
+  let redeSec = h("section",{class:"painel aj"}), atuSec = h("section",{class:"painel aj"}), permSec = h("section",{class:"painel aj"});
   try { redeSec = await secRede(); } catch(e){}
   try { atuSec = await secAtualizacoes(); } catch(e){}
-  return [contasSec, nuvemSec, aparelhosSec, vigiaSec, licSec, redeSec, atuSec];
+  try { permSec = await secPermissoes(); } catch(e){}
+  return [contasSec, nuvemSec, aparelhosSec, vigiaSec, licSec, redeSec, atuSec, permSec];
 }
 
 /* ---------- Ajustes: aparelhos (sincronização), vigia e segurança ---------- */
@@ -178,4 +179,31 @@ async function secVigia(){
     h("div",{class:"acoes-aj"}, h("button",{class:"btn primario", onclick:async()=>{
       try { const r = await api("/api/vigia",{method:"POST",body:JSON.stringify({ativo:liga.checked})}); avisar(r.mensagem); } catch(err){ avisar(err.message); } }},"Aplicar")));
   return s;
+}
+
+async function secPermissoes(){
+  const sec = h("section",{class:"painel aj"}, h("h2",{},"Permissões das ações"));
+  async function desenhar(){
+    let d; try { d = (await api("/api/acoes/permissoes")).permissoes; } catch(err){ sec.append(h("p",{class:"vazio"}, err.message)); return; }
+    const rotulo = {abrir_programa:"Abrir programas", abrir_arquivo:"Abrir arquivos", abrir_pasta:"Abrir pastas",
+      abrir_site:"Abrir sites", info_sistema:"Ver informações do computador", verificar_atualizacoes:"Verificar atualizações",
+      aplicar_atualizacoes:"Instalar atualizações", abrir_windows_update:"Abrir o Windows Update",
+      organizar_downloads:"Organizar a pasta Downloads", rascunho_email:"Salvar rascunho de e-mail",
+      bloquear_tela:"Bloquear a tela", desligar:"Desligar ou reiniciar", cancelar_desligamento:"Cancelar desligamento"};
+    const linha = a => h("div",{class:"perm"},
+      h("div",{}, h("b",{}, rotulo[a.nome] || a.descricao), a.risco === "alto" ? h("span",{class:"tag atrasada", style:"margin-left:6px"},"delicada") : null,
+        h("br"), h("small",{}, a.descricao + (a.vezes ? ` · usada ${a.vezes}×` : ""))),
+      a.risco === "alto"
+        ? h("small",{style:"color:var(--suave)"},"sempre pergunta")
+        : h("select",{value:a.decisao, onchange:async ev=>{ try { await api(`/api/acoes/permissoes/${encodeURIComponent(a.nome)}`,{method:"PUT",body:JSON.stringify({decisao:ev.target.value})}); avisar("Salvo."); } catch(err){ avisar(err.message); } }},
+            h("option",{value:"perguntar", selected:a.decisao==="perguntar"},"Perguntar"),
+            h("option",{value:"sempre", selected:a.decisao==="sempre"},"Sempre deixar"),
+            h("option",{value:"nunca", selected:a.decisao==="nunca"},"Nunca deixar")));
+    sec.replaceChildren(h("h2",{},"Permissões das ações"),
+      h("p",{class:"ajuda"},"Quando você pede uma ação pela primeira vez, o Núcleo pergunta. Se escolher “não perguntar mais”, ela passa a valer aqui. Ações delicadas (instalar atualizações, desligar) sempre pedem confirmação."),
+      h("h3",{class:"g-sub", style:"margin:10px 0 4px"},"Do assistente"), ...d.filter(a => a.nome.startsWith("nucleo:")).map(linha),
+      h("h3",{class:"g-sub", style:"margin:14px 0 4px"},"No computador"), ...d.filter(a => !a.nome.startsWith("nucleo:")).map(linha));
+  }
+  await desenhar();
+  return sec;
 }
