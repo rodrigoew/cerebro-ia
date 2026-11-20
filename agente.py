@@ -611,7 +611,7 @@ class Agente:
                 corpo = {"model": p["modelo"], "max_tokens": 700, "messages": conversa, "tools": ferramentas}
                 req = urllib.request.Request(p["url"].rstrip("/") + "/chat/completions", data=json.dumps(corpo).encode(),
                                              headers={"content-type": "application/json",
-                                                      "authorization": f"Bearer {provedores.chave('openai') or 'sem-chave'}"})
+                                                      "authorization": f"Bearer {provedores.chave_openai(self.app.cfg) or 'sem-chave'}"})
                 with urllib.request.urlopen(req, timeout=60) as r:
                     msg = ((json.loads(r.read()).get("choices") or [{}])[0]).get("message") or {}
                 texto = msg.get("content") or ""

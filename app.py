@@ -1526,7 +1526,7 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                                      "modelo_openai": n.get("modelo_openai", "gpt-4o-mini"), "rotulo_openai": n.get("rotulo", ""),
                                      "modelo_claude": app.cfg.get("claude_api", {}).get("modelo", "claude-sonnet-5-5"),
                                      "chave_claude": bool(provedores.chave("claude")),
-                                     "chave_openai": bool(provedores.chave("openai")),
+                                     "chave_openai": bool(provedores.chave_openai(app.cfg)),
                                      "politica": app.cfg.get("claude_api", {}).get("envio_no_nucleo", "sempre_perguntar"),
                                      "roteamento": n.get("roteamento", "perguntar")})
                 elif url.path == "/api/ajustes/cidades":

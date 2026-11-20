@@ -35,6 +35,40 @@ def chave(provedor: str) -> str | None:
         return None
 
 
+def chave_freellmapi_local() -> str | None:
+    """A chave unificada do FreeLLMAPI que vem junto com o Núcleo (vendor/freellmapi), lida direto do banco dele:
+    assim não é preciso copiar e colar, e uma chave antiga ou errada colada à mão não atrapalha."""
+    import pathlib
+    import sqlite3
+    banco = pathlib.Path(__file__).resolve().parent / "vendor" / "freellmapi" / "server" / "data" / "freeapi.db"
+    if not banco.exists():
+        return None
+    try:
+        con = sqlite3.connect(f"file:{banco.as_posix()}?mode=ro", uri=True, timeout=2)
+        try:
+            linha = con.execute("SELECT value FROM settings WHERE key = 'unified_api_key'").fetchone()
+        finally:
+            con.close()
+        valor = (linha[0] if linha else "") or ""
+        return valor if valor.startswith("freellmapi-") else None
+    except Exception:
+        return None
+
+
+def chave_openai(cfg: dict | None = None) -> str | None:
+    """Chave do provedor compatível: o FreeLLMAPI local usa a própria chave unificada; os demais, a chave guardada."""
+    url = ((cfg or {}).get("nuvem", {}) or {}).get("url_openai", "")
+    if cfg is None or "localhost:3001" in url or "127.0.0.1:3001" in url:
+        local = chave_freellmapi_local()
+        if local:
+            return local
+    try:
+        guardada = _keyring().get_password(SERVICO, "nuvem:openai")
+    except Exception:
+        guardada = None
+    return guardada or os.environ.get("OPENAI_API_KEY")
+
+
 def salvar_chave(provedor: str, valor: str) -> None:
     valor = valor.strip()
     if not valor:
@@ -54,7 +88,7 @@ def ativo(cfg: dict, papel: str = "aprofundar") -> dict:
     if provedor == "openai":
         return {"provedor": "openai", "rotulo": n.get("rotulo") or "Provedor compatível com OpenAI",
                 "modelo": n.get("modelo_openai", "gpt-4o-mini"), "url": n.get("url_openai", "https://api.openai.com/v1"),
-                "web": False, "chave": bool(chave("openai")) or "localhost" in n.get("url_openai", "") or
+                "web": False, "chave": bool(chave_openai(cfg)) or "localhost" in n.get("url_openai", "") or
                 "127.0.0.1" in n.get("url_openai", "")}
     return {"provedor": "claude", "rotulo": "Claude", "modelo": cfg.get("claude_api", {}).get("modelo", "claude-sonnet-5-5"),
             "url": "https://api.anthropic.com", "web": True, "chave": bool(chave("claude"))}
@@ -89,7 +123,7 @@ def enviar(cfg: dict, sistema: str, conteudo: str, web: bool = False, papel: str
                                               "anthropic-version": "2023-06-01"})
         dados = _chamar(req, p["rotulo"])
         return "".join(b.get("text", "") for b in dados.get("content", []) if b.get("type") == "text")
-    k = chave("openai") or "sem-chave"
+    k = chave_openai(cfg) or "sem-chave"
     pedido = {"model": p["modelo"], "max_tokens": 1200,
               "messages": [{"role": "system", "content": sistema}, {"role": "user", "content": conteudo}]}
     req = urllib.request.Request(p["url"].rstrip("/") + "/chat/completions", data=json.dumps(pedido).encode(),
@@ -114,7 +148,7 @@ def testar(cfg: dict, papel: str = "auto") -> dict:
     p = ativo(cfg, papel)
     if p["provedor"] != "openai":
         return {"ok": bool(chave("claude")), "mensagem": "Claude: chave guardada." if chave("claude") else "Claude: falta a chave."}
-    k = chave("openai")
+    k = chave_openai(cfg)
     req = urllib.request.Request(p["url"].rstrip("/") + "/models",
                                  headers={"authorization": f"Bearer {k}"} if k else {})
     try:
@@ -134,7 +168,7 @@ def enviar_fluxo(cfg: dict, sistema: str, conteudo: str, papel: str = "auto"):
     if p["provedor"] == "claude":
         yield enviar(cfg, sistema, conteudo, papel=papel)
         return
-    k = chave("openai") or "sem-chave"
+    k = chave_openai(cfg) or "sem-chave"
     pedido = {"model": p["modelo"], "max_tokens": 1200, "stream": True,
               "messages": [{"role": "system", "content": sistema}, {"role": "user", "content": conteudo}]}
     req = urllib.request.Request(p["url"].rstrip("/") + "/chat/completions", data=json.dumps(pedido).encode(),
@@ -181,7 +215,7 @@ def tem_modelos(cfg: dict) -> bool:
         return em_cache[1]
     ok = False
     try:
-        k = chave("openai")
+        k = chave_openai(cfg)
         req = urllib.request.Request(p["url"].rstrip("/") + "/models", headers={"authorization": f"Bearer {k}"} if k else {})
         with urllib.request.urlopen(req, timeout=3) as r:
             ok = len(json.loads(r.read()).get("data", [])) > 0
