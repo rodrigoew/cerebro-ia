@@ -144,7 +144,16 @@ async function secCerebro(){
   const rot = h("span",{}, `${silencio.value} ms`);
   silencio.oninput = () => rot.textContent = `${silencio.value} ms`;
   const tm = e.tempo_medio;
+  let aj = {}; try { aj = await api("/api/ajustes"); } catch(err){}
+  const perfilAtual = (aj.perfil && aj.perfil.perfil) || "";
+  const perfil = h("textarea",{rows:"7", maxlength:"4000", style:"width:100%;resize:vertical",
+    placeholder:"Quem é você: trabalho, família (nomes e aniversários), rotina, gostos, como prefere que o Núcleo fale com você…"}, perfilAtual);
+  const conta = h("span",{class:"ajuda"}, `${perfilAtual.length}/4000`);
+  perfil.oninput = () => conta.textContent = `${perfil.value.length}/4000`;
+  const salvarPerfil = async () => { try { await api("/api/ajustes",{method:"PUT",body:JSON.stringify({secao:"perfil", dados:{perfil:perfil.value, areas:(aj.perfil && aj.perfil.areas) || []}})}); avisar("Perfil salvo. O Núcleo já usa na próxima resposta."); } catch(err){ avisar(err.message); } };
   return h("section",{class:"painel aj"}, h("h2",{},"Cérebro"),
+    h("label",{class:"rot"},"Sobre você (o que o Núcleo sabe de você em toda conversa)"), perfil,
+    h("div",{style:"display:flex;justify-content:space-between;align-items:center;margin:4px 0 12px"}, conta, h("button",{class:"btn", onclick:salvarPerfil},"Salvar perfil")),
     h("p",{class:"ajuda"},"Quem conversa com você. A IA entende o pedido com o histórico da conversa, usa as ferramentas do Núcleo e responde em linguagem natural."),
     h("label",{class:"rot"},"Quem pensa"), modo,
     h("p",{class:"ajuda", style:"margin-top:6px"},"No Claude, suas perguntas e os dados das ferramentas (agenda, e-mails, finanças) vão para a Anthropic. No Local, nada sai do computador."),

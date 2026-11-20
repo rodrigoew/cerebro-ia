@@ -33,6 +33,53 @@ def _f(nome: str, descricao: str, props: dict | None = None, obrig: list | None 
             "esquema": {"type": "object", "properties": props or {}, "required": obrig or []}}
 
 
+def calcular(expressao: str) -> str:
+    """Conta exata sem eval: só números e + - * / ** % ( )."""
+    import ast
+    import operator as op
+    ops = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul, ast.Div: op.truediv, ast.Pow: op.pow, ast.Mod: op.mod,
+           ast.USub: op.neg, ast.UAdd: op.pos, ast.FloorDiv: op.floordiv}
+    texto = expressao.replace("R$", "").replace("x", "*").replace("×", "*").replace("÷", "/").strip()
+    texto = re.sub(r"(\d)\.(\d{3})(?!\d)", r"\1\2", texto)          # 1.845 → 1845 (milhar)
+    texto = re.sub(r"(\d),(\d)", r"\1.\2", texto)                    # 12,5 → 12.5
+
+    def val(no):
+        if isinstance(no, ast.Constant) and isinstance(no.value, (int, float)):
+            return no.value
+        if isinstance(no, ast.BinOp) and type(no.op) in ops:
+            if isinstance(no.op, ast.Pow) and abs(val(no.right)) > 100:
+                raise ValueError("expoente grande demais")
+            return ops[type(no.op)](val(no.left), val(no.right))
+        if isinstance(no, ast.UnaryOp) and type(no.op) in ops:
+            return ops[type(no.op)](val(no.operand))
+        raise ValueError("expressão não suportada")
+    try:
+        r = val(ast.parse(texto, mode="eval").body)
+    except ZeroDivisionError:
+        return "Divisão por zero."
+    except Exception:
+        return "Não consegui calcular essa expressão; use só números e + - * / ( )."
+    r = round(r, 6)
+    br = f"{r:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{expressao} = {int(r) if float(r).is_integer() else r} (em reais: R$ {br})"
+
+
+def controlar_midia(acao: str, vezes: int = 1) -> str:
+    """Teclas de mídia do Windows (funciona com Spotify, YouTube no navegador, etc.)."""
+    teclas = {"tocar_pausar": 0xB3, "proxima": 0xB0, "anterior": 0xB1, "volume_mais": 0xAF, "volume_menos": 0xAE, "mudo": 0xAD}
+    if acao not in teclas:
+        return "Ação de mídia desconhecida."
+    try:
+        import ctypes
+        u = ctypes.windll.user32
+    except Exception:
+        return "Controle de mídia só funciona no Windows."
+    for _ in range(max(1, min(vezes, 25)) if acao.startswith("volume") else 1):
+        u.keybd_event(teclas[acao], 0, 0, 0)
+        u.keybd_event(teclas[acao], 0, 2, 0)
+    return "Feito."
+
+
 S = {"type": "string"}
 N = {"type": "number"}
 
@@ -40,7 +87,8 @@ FERRAMENTAS = [
     _f("consultar_agenda", "Compromissos de um período (ex.: 'hoje', 'amanhã', 'sexta', '11/11', 'esta semana').", {"periodo": S}),
     _f("criar_compromisso", "Adiciona um compromisso à agenda. Data em AAAA-MM-DD; hora HH:MM se houver.",
        {"titulo": S, "data": S, "hora": S, "duracao_min": N, "local": S}, ["titulo", "data"]),
-    _f("criar_lembrete", "Cria um lembrete. Data AAAA-MM-DD e hora HH:MM opcionais.", {"texto": S, "data": S, "hora": S}, ["texto"]),
+    _f("criar_lembrete", "Cria um lembrete (avisa na tela e em voz na hora). Data AAAA-MM-DD e hora HH:MM opcionais; para "
+       "'me avisa daqui a 20 minutos' use em_minutos.", {"texto": S, "data": S, "hora": S, "em_minutos": N}, ["texto"]),
     _f("consultar_financeiro", "Contas a pagar/receber, vencimentos, saldo, gastos. Descreva o que quer saber.", {"pergunta": S}, ["pergunta"]),
     _f("lancar_conta", "Registra conta a pagar ou a receber.",
        {"tipo": {"type": "string", "enum": ["pagar", "receber"]}, "descricao": S, "valor_reais": N, "vencimento": S, "carteira": S},
@@ -70,6 +118,15 @@ FERRAMENTAS = [
        {"texto": S}, ["texto"]),
     _f("iniciar_processo", "Começa um processo/checklist já cadastrado (ex.: fechamento do mês).", {"nome": S}, ["nome"]),
     _f("abrir_globo", "Abre o globo 3D ao vivo (voos, navios, satélites, incêndios, terremotos, clima, câmeras) num lugar.", {"pedido": S}, ["pedido"]),
+    _f("remarcar_compromisso", "Muda data e/ou hora de um compromisso da agenda do Núcleo. busca = parte do título.",
+       {"busca": S, "nova_data": {"type": "string", "description": "AAAA-MM-DD"}, "nova_hora": {"type": "string", "description": "HH:MM"}}, ["busca"]),
+    _f("cancelar_compromisso", "Cancela (apaga) um compromisso da agenda do Núcleo. busca = parte do título.", {"busca": S}, ["busca"]),
+    _f("calcular", "Faz contas exatas: + - * / ** % e parênteses (ex.: '1845*0.12', '(3200-1845)/4'). Use para qualquer conta de dinheiro, "
+       "porcentagem ou divisão, em vez de calcular de cabeça.", {"expressao": S}, ["expressao"]),
+    _f("contar_dias", "Quantos dias faltam (ou passaram) até uma data AAAA-MM-DD, e o dia da semana dela.", {"data": S}, ["data"]),
+    _f("controlar_midia", "Controla a música/vídeo do computador: tocar_pausar, proxima, anterior, volume_mais, volume_menos, mudo.",
+       {"acao": {"type": "string", "enum": ["tocar_pausar", "proxima", "anterior", "volume_mais", "volume_menos", "mudo"]},
+        "vezes": N}, ["acao"]),
     _f("acao_no_computador", "Faz algo no computador (abrir programa/site/pasta, ver atualizações, informações do sistema etc.).",
        {"pedido": S}, ["pedido"]),
 ]
@@ -105,6 +162,7 @@ class Agente:
         except Exception:
             pass
         cidade = ((cfg.get("clima", {}).get("locais") or [{}])[0]).get("cidade", "")
+        correcoes = self._correcoes()
         return (
             f"Você é {cfg.get('assistente', {}).get('nome', 'Núcleo')}, o secretário pessoal de {nome}. "
             f"Agora é {DIAS[agora.weekday()]}, {agora:%d/%m/%Y %H:%M}" + (f", em {cidade}" if cidade else "") + ". "
@@ -126,8 +184,36 @@ class Agente:
             "guarde com guardar_memoria sem precisar ser pedido. Para fatos atuais do mundo (notícias, preços, cotações, "
             "resultados, lançamentos), use a pesquisa na web quando ela estiver disponível e diga a fonte em poucas palavras."
             + ("\nO que você já sabe sobre o usuário: " + " | ".join(fixos) if fixos else "")
+            + ("\nCorreções que o usuário já fez nas suas respostas (aprenda o jeito que ele prefere e não repita o erro): "
+               + " | ".join(correcoes) if correcoes else "")
             + ("\nPanorama de agora: " + self._panorama() if self._panorama() else "")
         )
+
+    def _correcoes(self) -> list[str]:
+        """As respostas que o usuário corrigiu (botão de corrigir): viram exemplos do que ele espera."""
+        if getattr(self, "_corr", None) and time.time() - self._corr[0] < 600:
+            return self._corr[1]
+        try:
+            lista = self.app.memoria.q("""SELECT pergunta, correcao FROM conversas WHERE COALESCE(correcao, '') NOT IN ('', 'None')
+                                          ORDER BY id DESC LIMIT 8""")
+            saida = [f"pediram “{x['pergunta'][:110]}” → o certo era “{x['correcao'][:160]}”" for x in lista]
+        except Exception:
+            saida = []
+        self._corr = (time.time(), saida)
+        return saida
+
+    def _recuperar_historico(self) -> None:
+        """Depois de reiniciar o app, retoma a conversa recente (últimas 3 horas) para entender "isso", "e amanhã?"."""
+        self._recuperado = True
+        try:
+            limite = (self.app.agora() - dt.timedelta(hours=3)).isoformat()
+            lista = self.app.memoria.q("SELECT pergunta, resposta FROM conversas WHERE quando >= ? ORDER BY id DESC LIMIT 5", (limite,))
+        except Exception:
+            return
+        for x in reversed(lista):
+            resposta = str(x["resposta"] or "").strip().split("\n- ")[0][:400]
+            if x["pergunta"] and resposta:
+                self.historico += [{"role": "user", "content": x["pergunta"][:400]}, {"role": "assistant", "content": resposta}]
 
     def _panorama(self) -> str:
         """Resumo curto do momento (o que pede atenção), para o agente pensar com contexto sem gastar ferramentas."""
@@ -156,6 +242,9 @@ class Agente:
             if nome == "criar_lembrete":
                 dados = {"texto": str(a.get("texto", ""))[:200], "data": a.get("data") or None,
                          "hora": a.get("hora") if re.fullmatch(r"\d{2}:\d{2}", str(a.get("hora") or "")) else None}
+                if a.get("em_minutos"):
+                    alvo = agora + dt.timedelta(minutes=max(1, min(int(float(a["em_minutos"])), 24 * 60)))
+                    dados["data"], dados["hora"] = alvo.date().isoformat(), alvo.strftime("%H:%M")
                 if dados["data"]:
                     dt.date.fromisoformat(dados["data"])
                 return self._acao("lembrete", dados, f"lembrete “{dados['texto']}”")
@@ -264,6 +353,44 @@ class Agente:
                 if r.get("abrir_globo"):
                     self.extras["abrir_globo"] = r["abrir_globo"]
                 return r.get("titulo", "Globo aberto.") + " (a tela do globo foi aberta)"
+            if nome in ("remarcar_compromisso", "cancelar_compromisso"):
+                busca = str(a.get("busca", "")).strip()
+                achados = app.memoria.q("SELECT * FROM agenda_nucleo WHERE titulo LIKE ? AND inicio >= ? ORDER BY inicio LIMIT 3",
+                                        (f"%{busca}%", agora.date().isoformat())) if busca else []
+                if not achados:
+                    externos = [e for e in app.eventos(agora.date(), agora.date() + dt.timedelta(days=60))[0]
+                                if busca and busca.lower() in e["titulo"].lower()]
+                    if externos:
+                        return (f"“{externos[0]['titulo']}” está na agenda {externos[0].get('agenda') or 'externa'} (Google/Outlook), "
+                                "que o Núcleo só lê. Diga ao usuário para mudar por lá.")
+                    return "Não achei esse compromisso na agenda a partir de hoje."
+                if len(achados) > 1 and not any(x["titulo"].lower() == busca.lower() for x in achados):
+                    return "Achei mais de um, pergunte qual: " + "; ".join(f"{x['titulo']} ({x['inicio'][:16].replace('T', ' ')})" for x in achados)
+                e = next((x for x in achados if x["titulo"].lower() == busca.lower()), achados[0])
+                quando = e["inicio"][:16].replace("T", " às ")
+                if nome == "cancelar_compromisso":
+                    return self._acao("cancelar_evento", {"id": e["id"], "titulo": e["titulo"]}, f"cancelar “{e['titulo']}” ({quando})")
+                ini = dt.datetime.fromisoformat(e["inicio"])
+                nova_data = str(a.get("nova_data") or (ini.date().isoformat()))
+                dt.date.fromisoformat(nova_data)
+                nova_hora = a.get("nova_hora") if re.fullmatch(r"\d{2}:\d{2}", str(a.get("nova_hora") or "")) else \
+                    (None if e["dia_inteiro"] else ini.strftime("%H:%M"))
+                dur = 60
+                if e.get("fim") and not e["dia_inteiro"]:
+                    dur = int((dt.datetime.fromisoformat(e["fim"]) - ini).total_seconds() // 60) or 60
+                dados = {"id": e["id"], "titulo": e["titulo"], "data": nova_data, "hora": nova_hora, "duracao_min": dur,
+                         "local": e.get("local") or "", "notas": e.get("notas") or ""}
+                return self._acao("remarcar", dados, f"passar “{e['titulo']}” de {quando} para {nova_data}"
+                                  + (f" às {nova_hora}" if nova_hora else " (dia inteiro)"))
+            if nome == "calcular":
+                return calcular(str(a.get("expressao", "")))
+            if nome == "contar_dias":
+                alvo = dt.date.fromisoformat(str(a.get("data", ""))[:10])
+                d = (alvo - agora.date()).days
+                return (f"{alvo:%d/%m/%Y} é {DIAS[alvo.weekday()]}-feira" if alvo.weekday() < 5 else f"{alvo:%d/%m/%Y} é {DIAS[alvo.weekday()]}") + \
+                       (". É hoje." if d == 0 else f". Faltam {d} dia(s)." if d > 0 else f". Foi há {-d} dia(s).")
+            if nome == "controlar_midia":
+                return controlar_midia(str(a.get("acao", "")), int(float(a.get("vezes") or 1)))
             if nome == "acao_no_computador":
                 r = n._acao_por_regras(str(a.get("pedido", "")), __import__("cerebro").sem_acento(str(a.get("pedido", ""))))
                 if r is None:
@@ -316,6 +443,8 @@ class Agente:
             return
         self.extras = {}
         t0 = time.time()
+        if not self.historico and not getattr(self, "_recuperado", False):
+            self._recuperar_historico()
         msgs = self.historico[-10:] + [{"role": "user", "content": texto}]
         partes: list[str] = []
         try:

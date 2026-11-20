@@ -130,6 +130,11 @@ function mostrarNotificacao(n){
   const el = h("button",{class:"notif", "data-nivel":n.nivel || "normal", onclick:()=>{ if (n.tela) irPara(n.tela); el.remove(); }},
     h("b",{}, n.titulo), h("span",{}, n.texto));
   pilha.append(el);
+  // lembrete na hora: além do aviso, fala em voz alta (se o Núcleo não estiver no meio de uma conversa)
+  if (n.titulo === "Lembrete" && typeof falar === "function" && typeof nucleo !== "undefined" &&
+      !["ouvindo","transcrevendo","analisando","falando","claude"].includes(nucleo.estado)){
+    falar(`Lembrete: ${n.texto}`).catch(()=>{});
+  }
   setTimeout(() => el.classList.add("saindo"), 9000); setTimeout(() => el.remove(), 9600);
   if (typeof definirHumor === "function" && n.nivel && n.nivel !== "normal"){ definirHumor(n.nivel, 8000); emitirOnda(n.nivel); }
 }

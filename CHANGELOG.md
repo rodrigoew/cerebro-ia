@@ -1,5 +1,23 @@
 # Histórico de versões
 
+## 0.21.0 — pacote mínimo de inteligência e widget novo
+
+**Conhecimento**
+- Perfil "Sobre você" editável em Ajustes > Cérebro, com até 4000 caracteres (antes era cortado em 600 e não dava para editar depois).
+- As correções que você faz nas respostas viram exemplos no cérebro: ele aprende o jeito que você prefere.
+- A conversa recente (últimas 3 horas) continua depois de reiniciar o app, para entender "isso" e "e amanhã?".
+
+**Ações**
+- Remarcar e cancelar compromissos da agenda do Núcleo, junto com os avisos automáticos deles.
+- Cronômetro: "me avisa daqui a 20 minutos".
+- Lembretes na hora também são falados em voz alta.
+- Contas exatas (porcentagens, divisões, valores em reais) e contagem de dias até uma data.
+- Controle de música e vídeo: tocar/pausar, próxima, anterior, volume e mudo.
+
+**Widget flutuante**
+- Mini-Núcleo vivo que segue o tema (Âmbar ou Jarvis): hora e próximo compromisso, onda da voz ao ouvir, pontos em órbita ao pensar, legenda ao falar e borda vermelha em caso de risco.
+- Atalhos ao passar o mouse: conversar, briefing e abrir o Núcleo. Aparece sempre que a janela é minimizada.
+
 ## 0.20.0
 - Briefing escrito pela IA: o Claude (ou a IA local) transforma os dados do dia numa narração corrida e natural, mantendo cartões e fatos.
 - Narração sem pausas: todas as vozes do briefing são geradas no começo, em paralelo.

@@ -139,6 +139,8 @@ ACOES_NUCLEO = {
     "rascunho_email": ("Salvar rascunhos de resposta de e-mail (nunca envia)", "medio"),
     "pagar": ("Marcar contas como pagas no Financeiro", "medio"),
     "concluir_lembrete": ("Marcar lembretes como concluídos", "baixo"),
+    "remarcar": ("Remarcar compromissos da agenda do Núcleo", "baixo"),
+    "cancelar_evento": ("Cancelar compromissos da agenda do Núcleo", "medio"),
 }
 
 

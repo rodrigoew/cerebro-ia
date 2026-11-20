@@ -448,6 +448,34 @@ class Aplicativo:
         self.llm.remoto = {"ativo": bool(usar), "url": sc.get("servidor", ""), "token": self.sinc.token_servidor}
         self.llm._remoto = (0.0, None)
 
+    # ------------------------------------------------------------ contexto do widget (hora, próximo compromisso, alerta)
+    def contexto_widget(self) -> dict:
+        agora = time.time()
+        cache = getattr(self, "_ctx_widget", None)
+        if cache and agora - cache[0] < 30:
+            return cache[1]
+        info = {"tema": self.cfg.get("aparencia", {}).get("tema", "ambar"), "assistente": self.cfg.get("assistente", {}).get("nome", "Núcleo"),
+                "proximo": None, "alerta": "normal", "alerta_texto": ""}
+        try:
+            ag = self.agora()
+            eventos, _ = self.eventos(ag.date(), ag.date() + dt.timedelta(days=1))
+            for e in eventos:
+                if e.get("dia_inteiro") or not isinstance(e["inicio"], dt.datetime):
+                    continue
+                falta = (e["inicio"] - ag).total_seconds() / 60
+                if -5 <= falta <= 180:
+                    info["proximo"] = {"titulo": e["titulo"], "hora": e["inicio"].strftime("%H:%M"), "minutos": int(round(falta))}
+                    break
+        except Exception:
+            pass
+        try:
+            a = self.alerta_global()
+            info["alerta"], info["alerta_texto"] = a["nivel"], (a["motivos"] or [""])[0]
+        except Exception:
+            pass
+        self._ctx_widget = (agora, info)
+        return info
+
     # ------------------------------------------------------------ foco do momento (tela inicial)
     def foco(self) -> list[dict]:
         """O que vale a pena ver agora, do mais urgente ao menos. Vira os atalhos da tela inicial."""
@@ -618,7 +646,7 @@ class Aplicativo:
                       "abertura": str(d.get("abertura", ""))[:200], "fechamento": str(d.get("fechamento", ""))[:200],
                       "temas_noticias": [str(t)[:40] for t in d.get("temas_noticias", [])][:10]})
         elif secao == "perfil":
-            cfg.setdefault("cerebro", {})["perfil"] = str(d.get("perfil", ""))[:600]
+            cfg.setdefault("cerebro", {})["perfil"] = str(d.get("perfil", ""))[:4000]
             areas = [str(a).strip()[:30] for a in d.get("areas", []) if str(a).strip()][:8]
             if areas:
                 cfg["carteiras"] = areas
@@ -886,6 +914,19 @@ class Aplicativo:
         if tipo == "pagar":
             self.marcar_pago(int(dados["id"]), False)
             return {"ok": True, "mensagem": f"Marquei “{dados.get('descricao', 'a conta')}” como paga."}
+        if tipo in ("remarcar", "cancelar_evento"):
+            e = self.memoria.q("SELECT * FROM agenda_nucleo WHERE id = ?", (int(dados["id"]),))
+            if not e:
+                raise ValueError("Esse compromisso não existe mais.")
+            titulo = e[0]["titulo"]
+            # apaga o compromisso e os avisos automáticos dele (véspera e 1 hora antes)
+            self.memoria.x("DELETE FROM agenda_nucleo WHERE id = ?", (e[0]["id"],))
+            self.memoria.x("DELETE FROM lembretes WHERE feito = 0 AND (texto LIKE ? OR texto = ?)", (f"Amanhã: {titulo}%", f"Em 1 hora: {titulo}"))
+            if tipo == "cancelar_evento":
+                return {"ok": True, "mensagem": f"Cancelei “{titulo}”."}
+            id_ = self.criar_evento({k: dados.get(k) for k in ("titulo", "data", "hora", "duracao_min", "local", "notas")})
+            return {"ok": True, "id": id_, "ics": f"/api/agenda/evento/{id_}.ics",
+                    "mensagem": f"Remarquei “{titulo}” para {dados['data'][8:10]}/{dados['data'][5:7]}" + (f" às {dados['hora']}." if dados.get("hora") else ".")}
         if tipo == "concluir_lembrete":
             self.memoria.x("UPDATE lembretes SET feito = 1 WHERE id = ?", (int(dados["id"]),))
             return {"ok": True, "mensagem": f"Lembrete “{dados.get('texto', '')}” concluído."}
@@ -1451,7 +1492,7 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                 elif url.path == "/api/foco":
                     self._json(200, {"foco": app.foco()})
                 elif url.path == "/api/presenca":
-                    self._json(200, {**app.presenca, "vigia": app.vigia.ligado})
+                    self._json(200, {**app.presenca, "vigia": app.vigia.ligado, **app.contexto_widget()})
                 elif url.path == "/indicador":
                     corpo = (RECURSOS / "static" / "indicador.html").read_bytes()
                     self.send_response(200)
@@ -2152,6 +2193,36 @@ class ApiJanela:
             INDICADOR_WV.hide()
         return True
 
+    def ajustar_indicador(self, largura, altura):
+        """O widget cresce e encolhe mantendo a borda direita no lugar (onde você o deixou)."""
+        if INDICADOR_WV is None:
+            return False
+        largura, altura = max(120, min(int(largura), 640)), max(36, min(int(altura), 200))
+        try:
+            direita = INDICADOR_WV.x + INDICADOR_WV.width
+            INDICADOR_WV.resize(largura, altura)
+            INDICADOR_WV.move(direita - largura, INDICADOR_WV.y)
+        except Exception:
+            return False
+        return True
+
+    def comando(self, acao):
+        """Botões do widget: falar (modo conversa), abrir o Núcleo ou o briefing."""
+        if JANELA_WV is None:
+            return False
+        js = {"conversa": "window.alternarConversaPeloWidget && window.alternarConversaPeloWidget()",
+              "briefing": "window.focarAssistente && window.focarAssistente('briefing')",
+              "abrir": "window.focarAssistente && window.focarAssistente('nucleo')"}.get(str(acao))
+        if not js:
+            return False
+        if acao != "conversa":
+            self.mostrar_principal()
+        try:
+            JANELA_WV.evaluate_js(js)
+        except Exception:
+            return False
+        return True
+
 
 def abrir_janela(url: str, bloquear: bool, app=None) -> None:
     """Prefere uma janela própria (pywebview). Sem ela, usa Edge/Chrome em modo app."""
@@ -2172,7 +2243,7 @@ def abrir_janela(url: str, bloquear: bool, app=None) -> None:
         JANELA_WV = webview.create_window(PRODUTO, url, width=1360, height=880, min_size=(980, 640),
                                           fullscreen=tela_cheia, background_color="#0A0806", js_api=api_js)
         if cfg.get("indicador_flutuante", True):
-            largura, altura = 150, 40                      # cápsula discreta no canto superior direito
+            largura, altura = 264, 46                      # cápsula no canto superior direito (cresce ao falar)
             try:
                 tela = webview.screens[0]
                 x, y = tela.width - largura - 18, 14
@@ -2184,7 +2255,8 @@ def abrir_janela(url: str, bloquear: bool, app=None) -> None:
                                                  background_color="#0A0806", js_api=api_js, easy_drag=True)
 
         def esconder_ou_minimizar():
-            if INDICADOR_WV is not None and app is not None and app.presenca.get("ativo"):
+            # o widget aparece sempre que a janela some: hora, próximo compromisso e o estado do Núcleo
+            if INDICADOR_WV is not None and app is not None:
                 INDICADOR_WV.show()
 
         def mostrar_de_volta():

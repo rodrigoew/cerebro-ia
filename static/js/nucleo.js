@@ -841,3 +841,5 @@ function alternarPaineis(){
   document.getElementById("n-paineis").textContent = abrir ? "Fechar painéis" : "Painéis";
   if (abrir) api("/api/cerebro/mapa").then(desenharMapa).catch(()=>{});
 }
+
+window.alternarConversaPeloWidget = function(){ const b = document.getElementById("n-conversa"); if (b && !b.disabled) b.click(); };
