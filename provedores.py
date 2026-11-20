@@ -44,7 +44,7 @@ def chave_freellmapi_local() -> str | None:
     if not banco.exists():
         return None
     try:
-        con = sqlite3.connect(f"file:{banco.as_posix()}?mode=ro", uri=True, timeout=2)
+        con = sqlite3.connect(str(banco), timeout=3)          # caminho simples: o formato URI falha no Windows
         try:
             linha = con.execute("SELECT value FROM settings WHERE key = 'unified_api_key'").fetchone()
         finally:
