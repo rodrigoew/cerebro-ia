@@ -176,7 +176,7 @@ async function secAparencia(){
   desenhar();
   let cor = e.cor_jarvis || "azul";
   const segCor = h("div",{class:"segmento",role:"group"});
-  const desenharCor = () => segCor.replaceChildren(...[["carmim","Carmim"],["roxo","Roxo neon"],["verde","Verde neon"],["laranja","Laranja"],["azul","Azul"]].map(([k,r]) =>
+  const desenharCor = () => segCor.replaceChildren(...[["grafite","Grafite (muda com o teor)"],["verde","Verde neon"],["carmim","Carmim"],["roxo","Roxo neon"],["laranja","Laranja"],["azul","Azul"]].map(([k,r]) =>
     h("button",{"aria-pressed":String(cor===k), onclick:()=>{ cor = k; desenharCor(); aplicarTema(tema, k); }}, r)));
   desenharCor();
   const narr = h("input",{type:"checkbox", checked:e.narracao_ia !== false});

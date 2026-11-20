@@ -748,6 +748,12 @@ body[data-tema=jarvis][data-cor=carmim]{--j:255,38,88;  --jb:255,150,176; --jt:2
 body[data-tema=jarvis][data-cor=roxo]  {--j:186,66,255; --jb:226,164,255; --jt:246,234,255; --jf1:#21093D; --jf2:#120424; --jf3:#070111}
 body[data-tema=jarvis][data-cor=verde] {--j:24,236,132; --jb:150,255,204; --jt:230,255,243; --jf1:#04291B; --jf2:#021810; --jf3:#010B07}
 body[data-tema=jarvis][data-cor=laranja]{--j:255,118,18; --jb:255,196,122; --jt:255,242,228; --jf1:#2D1203; --jf2:#190A02; --jf3:#0B0401}
+/* grafite: cinza forte em repouso; a tela inteira ganha cor conforme o teor do momento */
+body[data-tema=jarvis][data-cor=grafite]{--j:150,158,172; --jb:220,226,236; --jt:240,242,246; --jf1:#24272D; --jf2:#15171B; --jf3:#08090B}
+body[data-tema=jarvis][data-cor=grafite][data-humor=sucesso]{--j:24,236,132; --jb:150,255,204; --jt:230,255,243; --jf1:#0E2A1F; --jf2:#0A1813; --jf3:#050A08}
+body[data-tema=jarvis][data-cor=grafite][data-humor=atencao]{--j:255,176,32; --jb:255,214,130; --jt:255,246,228; --jf1:#2E220C; --jf2:#191307; --jf3:#0B0803}
+body[data-tema=jarvis][data-cor=grafite][data-humor=risco]  {--j:255,52,52;  --jb:255,150,140; --jt:255,236,234; --jf1:#330C0C; --jf2:#1C0606; --jf3:#0C0202}
+body[data-tema=jarvis][data-cor=grafite][data-humor=nuvem]  {--j:186,66,255; --jb:226,164,255; --jt:246,234,255; --jf1:#241035; --jf2:#140820; --jf3:#08030E}
 
 /* fundo: iluminado no centro, grade de prancheta visível e vinheta nas bordas */
 body[data-tema=jarvis] .tela.nucleo, body[data-tema=jarvis] .briefing{

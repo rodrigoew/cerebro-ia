@@ -36,13 +36,22 @@ const CORES_JARVIS = {
   roxo:    {anel:[186,66,255], brilho:[226,164,255], miolo:["#F6E8FF","#C98BFF","#4E168A"]},
   verde:   {anel:[24,236,132], brilho:[150,255,204], miolo:["#E8FFF3","#6CF5B4","#0B6B3E"]},
   laranja: {anel:[255,118,18], brilho:[255,196,122], miolo:["#FFF0E0","#FFAA55","#8A3D05"]},
+  grafite: {anel:[168,176,188], brilho:[228,232,240], miolo:["#FFFFFF","#C9CED8","#3A3F48"]},
 };
+// no grafite, a tela inteira muda de cor conforme o teor: cinza = tudo certo, verde = feito, âmbar = atenção, vermelho = risco
+const HUMOR_GRAFITE = {
+  sucesso:    {anel:[24,236,132],  brilho:[150,255,204], miolo:["#E8FFF3","#6CF5B4","#0B6B3E"], rotulo:"Confirmado"},
+  atencao:    {anel:[255,176,32],  brilho:[255,214,130], miolo:["#FFF4DE","#FFC85A","#8A5A05"], rotulo:"Atenção"},
+  risco:      {anel:[255,52,52],   brilho:[255,140,130], miolo:["#FFE2DE","#FF6A5E","#8E1010"], rotulo:"Risco"},
+};
+const HUMOR_PADRAO = {sucesso:{...PALETAS.sucesso}, atencao:{...PALETAS.atencao}, risco:{...PALETAS.risco}};
 let NORMAL_JARVIS = {...CORES_JARVIS.azul, rotulo:"Tudo em ordem"};
 let TEMA = "ambar", COR_JARVIS = "azul";
 function aplicarTema(nome, cor){
   TEMA = nome === "jarvis" ? "jarvis" : "ambar";
   if (cor && CORES_JARVIS[cor]) COR_JARVIS = cor;
   NORMAL_JARVIS = {...CORES_JARVIS[COR_JARVIS], rotulo:"Tudo em ordem"};
+  Object.assign(PALETAS, TEMA === "jarvis" && COR_JARVIS === "grafite" ? HUMOR_GRAFITE : HUMOR_PADRAO);
   PALETAS.normal = TEMA === "jarvis" ? NORMAL_JARVIS : NORMAL_AMBAR;
   document.body.dataset.tema = TEMA;
   document.body.dataset.cor = COR_JARVIS;
@@ -62,6 +71,7 @@ function definirHumor(nome, duracaoMs){
   raiz.setProperty("--n-brilho", `rgb(${p.brilho.join(",")})`);
   raiz.setProperty("--n-linha", `rgba(${p.anel.join(",")},.20)`);
   document.querySelectorAll("[data-humor-alvo]").forEach(el => el.dataset.humor = nome);
+  document.body.dataset.humor = nome;          // o tema grafite usa isso para mudar a cor da tela toda
   const selo = document.getElementById("n-humor");
   if (selo){ selo.dataset.humor = nome; selo.querySelector("span").textContent = p.rotulo; }
 }

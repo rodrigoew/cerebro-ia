@@ -658,7 +658,7 @@ class Aplicativo:
         elif secao == "aparencia":
             if d.get("tema") in ("ambar", "jarvis"):
                 cfg.setdefault("aparencia", {})["tema"] = d["tema"]
-            if d.get("cor_jarvis") in ("azul", "carmim", "roxo", "verde", "laranja"):
+            if d.get("cor_jarvis") in ("azul", "carmim", "roxo", "verde", "laranja", "grafite"):
                 cfg.setdefault("aparencia", {})["cor_jarvis"] = d["cor_jarvis"]
             if "narracao_ia" in d:
                 cfg.setdefault("briefing", {})["narracao_ia"] = bool(d["narracao_ia"])

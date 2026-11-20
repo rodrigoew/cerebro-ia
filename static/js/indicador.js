@@ -2,9 +2,9 @@
 /* Widget flutuante: um mini-Núcleo vivo.
    Parado: hora + próximo compromisso. Ouvindo: onda que segue a sua voz. Pensando: pontos em órbita.
    Falando: cresce e mostra a legenda. Risco: borda pulsa em vermelho. Passe o mouse para os atalhos. */
-const HUMOR = {normal:null, atencao:[232,137,58], risco:[224,72,62], sucesso:[143,196,154], nuvem:[192,139,208], aprendendo:[236,214,150]};
+const HUMOR = {normal:null, atencao:[255,176,32], risco:[255,60,56], sucesso:[24,236,132], nuvem:[186,66,255], aprendendo:[236,214,150]};
 const BASE = {ambar:[217,168,69], jarvis:[92,200,255]};
-const CORES_J = {azul:[92,200,255], carmim:[255,38,88], roxo:[186,66,255], verde:[24,236,132], laranja:[255,118,18]};
+const CORES_J = {azul:[92,200,255], carmim:[255,38,88], roxo:[186,66,255], verde:[24,236,132], laranja:[255,118,18], grafite:[176,184,196]};
 const ROTULOS = {sentinela:"aguardando", conversa:"escutando", ouvindo:"ouvindo", transcrevendo:"entendendo",
   analisando:"pensando", claude:"pensando", falando:"falando", confirmar:"confirme na tela"};
 const ATIVOS = new Set(["ouvindo","transcrevendo","analisando","falando","confirmar","claude"]);
