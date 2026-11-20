@@ -136,6 +136,7 @@ async function secCerebro(){
     h("option",{value:"openai", selected:e.cerebro_modo==="openai"},"Nuvem compatível (FreeLLMAPI)"),
     h("option",{value:"regras", selected:e.cerebro_modo==="regras"},"Regras (antigo, sem conversa)"));
   const modelo = h("select",{},
+    h("option",{value:"auto", selected:e.modelo_claude==="auto"},"Automático: Haiku na voz (rápido), Sonnet no texto (pensa mais)"),
     h("option",{value:"claude-haiku-5-5", selected:e.modelo_claude==="claude-haiku-5-5"},"Haiku: o mais rápido (recomendado para voz)"),
     h("option",{value:"claude-sonnet-5-5", selected:e.modelo_claude==="claude-sonnet-5-5"},"Sonnet: mais inteligente, um pouco mais lento"));
   const silencio = h("input",{type:"range", min:"350", max:"1200", step:"50", value:String(e.voz_silencio_ms || 600), style:"width:100%"});

@@ -16,6 +16,11 @@ async function carregarFoco(){
     document.getElementById("p-foco").replaceChildren(...d.foco.map((f, i) => h("button",{"data-nivel":f.nivel, style:`--i:${i}`,
       onclick:()=>{ if (f.id === "briefing") iniciarBriefing(); else pedir(f.pergunta); }},
       h("b",{}, f.rotulo), h("small",{}, f.detalhe))));
+    const modo = estado.cfg && estado.cfg.cerebro_modo;
+    if (modo && modo !== "claude"){
+      document.getElementById("p-foco").append(h("button",{class:"p-dica", onclick:()=>irPara("ajustes")},
+        h("b",{}, "Respostas mais naturais"), h("small",{}, "ligar o Claude em Ajustes > Cérebro")));
+    }
   } catch(e){}
 }
 

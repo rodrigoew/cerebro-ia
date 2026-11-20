@@ -165,3 +165,27 @@ def enviar_fluxo(cfg: dict, sistema: str, conteudo: str, papel: str = "auto"):
                 continue
             if pedaco:
                 yield pedaco
+
+
+_MODELOS_CACHE: dict = {}
+
+
+def tem_modelos(cfg: dict) -> bool:
+    """Um roteador sem nenhuma chave cadastrada (ex.: FreeLLMAPI recém-instalado) não responde nada: não vale tentar."""
+    import time as _t
+    p = ativo(cfg, "auto")
+    if p["provedor"] != "openai":
+        return True
+    em_cache = _MODELOS_CACHE.get(p["url"])
+    if em_cache and _t.time() - em_cache[0] < 300:
+        return em_cache[1]
+    ok = False
+    try:
+        k = chave("openai")
+        req = urllib.request.Request(p["url"].rstrip("/") + "/models", headers={"authorization": f"Bearer {k}"} if k else {})
+        with urllib.request.urlopen(req, timeout=3) as r:
+            ok = len(json.loads(r.read()).get("data", [])) > 0
+    except Exception:
+        ok = False
+    _MODELOS_CACHE[p["url"]] = (_t.time(), ok)
+    return ok

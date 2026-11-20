@@ -213,6 +213,7 @@ class Voz:
                     # Falhas de CUDA só aparecem na primeira transcrição: testa já.
                     list(m.transcribe(_silencio(0.5), language="pt")[0])
                     self._whisper = m
+                    self._whisper_gpu = disp == "cuda"
                     self._whisper_desc = (f"Whisper {modelo} "
                                           f"({'placa de vídeo' if disp == 'cuda' else 'processador'})")
                     return m
@@ -242,12 +243,15 @@ class Voz:
             import numpy as np
             modelo = self.carregar_whisper()
             audio = np.frombuffer(pcm16, dtype=np.int16).astype(np.float32) / 32768.0
+            na_gpu = getattr(self, "_whisper_gpu", self.dispositivo != "cpu")
             segmentos, _ = modelo.transcribe(
-                audio, language="pt", beam_size=5, vad_filter=True,
-                vad_parameters={"min_silence_duration_ms": 500},
+                audio, language="pt", beam_size=3 if na_gpu else 1, vad_filter=True,
+                vad_parameters={"min_silence_duration_ms": 400},
                 initial_prompt=self.prompt_vocabulario(vocabulario or []),
                 condition_on_previous_text=False)
-            texto = " ".join(s.text.strip() for s in segmentos).strip()
+            # descarta trechos que provavelmente não são você falando com o Núcleo (TV, conversa ao fundo, ruído)
+            bons = [s for s in segmentos if s.no_speech_prob < 0.6 and s.avg_logprob > -1.0]
+            texto = " ".join(s.text.strip() for s in bons).strip()
             # Em trechos sem fala, o Whisper às vezes "ouve" frases prontas: descarta.
             if re.fullmatch(r"(?i)[\s.,!?…]*(obrigad[oa]( por assistir)?|legendas?\b.*|tchau)[\s.!]*", texto):
                 return ""

@@ -136,6 +136,7 @@ ACOES_NUCLEO = {
     "memoria": ("Guardar fatos sobre você na memória", "baixo"),
     "guardar_itens": ("Guardar tarefas, ideias e decisões organizadas", "baixo"),
     "tarefa": ("Registrar como tarefa o que ainda não sei fazer sozinho", "baixo"),
+    "rascunho_email": ("Salvar rascunhos de resposta de e-mail (nunca envia)", "medio"),
 }
 
 

@@ -720,17 +720,22 @@ class Nucleo:
         if antes is not None:
             yield {"evento": "fim", "resposta": self._depois(texto, antes) if antes.get("tipo") != "acao_resultado" else antes}
             return
-        ag = self.agente.responder(texto)
-        if ag is not None:
-            ag["agente"] = True
-            frases = re.split(r"(?<=[.!?…])\s+", " ".join(ag["linhas"]))
-            yield {"evento": "inicio", "modelo": ag["modelo"], "origem": "local" if ag["local"] else "nuvem", "agente": True}
-            self._t_primeiro = time.time()
-            for f in frases:
-                if f.strip():
-                    yield {"evento": "texto", "texto": f.strip() + " "}
-            yield {"evento": "fim", "resposta": self._depois(texto, ag)}
-            return
+        iniciou = False
+        for tipo, valor in self.agente.responder_fluxo(texto):
+            if tipo == "texto":
+                if not iniciou:
+                    backend = self.agente.backend()
+                    yield {"evento": "inicio", "modelo": self.agente._rotulo(backend), "agente": True,
+                           "origem": "local" if backend == "local" else "nuvem"}
+                    self._t_primeiro, iniciou = time.time(), True
+                yield {"evento": "texto", "texto": valor}
+            elif valor is not None:
+                yield {"evento": "fim", "resposta": self._depois(texto, valor)}
+                return
+            elif iniciou:              # falhou no meio: entrega o que já saiu
+                yield {"evento": "fim", "resposta": self._depois(texto, {"tipo": "conversa", "linhas": ["(resposta interrompida)"],
+                                                                         "titulo": "", "itens": [], "local": True, "agente": True})}
+                return
         self._fluxo = True
         try:
             r = self._rotear(texto)
@@ -847,6 +852,8 @@ class Nucleo:
         if modo == "perguntar" or self.app.cfg.get("claude_api", {}).get("envio_no_nucleo") == "nunca":
             return None
         if not provedores.ativo(self.app.cfg, "auto")["chave"]:
+            return None
+        if not provedores.tem_modelos(self.app.cfg):
             return None
         agora = time.time()
         self._falhas_nuvem = [t for t in getattr(self, "_falhas_nuvem", []) if agora - t < 600]

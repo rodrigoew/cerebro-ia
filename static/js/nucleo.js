@@ -597,7 +597,7 @@ async function alternarConversa(sentinela=false){
   const fonte = conversa.ac.createMediaStreamSource(conversa.fluxo);
   conversa.proc = conversa.ac.createScriptProcessor(2048,1,1);
   const passoMs = 2048 / conversa.taxa * 1000;
-  Object.assign(conversa, {ativa:true, sentinela:!!sentinela, acordadoAte:0, falando:false, voz:0, silencio:0, buffer:[], pre:[], ocupado:false, ruido:.008});
+  Object.assign(conversa, {ativa:true, sentinela:!!sentinela, acordadoAte:0, ultimaTroca:Date.now(), falando:false, voz:0, silencio:0, buffer:[], pre:[], ocupado:false, ruido:.008});
   conversa.proc.onaudioprocess = e => {
     if (!conversa.ativa) return;
     const d = new Float32Array(e.inputBuffer.getChannelData(0));
@@ -634,11 +634,13 @@ async function enviarFala(partes){
   try {
     const pcm = paraPCM16(partes, conversa.taxa);
     const cab = {"Content-Type":"application/octet-stream"};
-    if (conversa.sentinela && Date.now() > (conversa.acordadoAte || 0)) cab["X-Sentinela"] = "1";
+    const ociosa = conversa.ativa && !conversa.sentinela && conversa.ultimaTroca && Date.now() - conversa.ultimaTroca > 45000;
+    if ((conversa.sentinela && Date.now() > (conversa.acordadoAte || 0)) || ociosa) cab["X-Sentinela"] = "1";
     const r = await fetch("/api/voz/ouvir",{method:"POST",credentials:"same-origin",headers:cab,body:pcm.buffer});
     const d = await r.json(); if (!r.ok) throw new Error(d.erro || "Falha ao processar a fala.");
     if (!d.ouvido || d.ignorado){ estadoNucleo(estadoOcioso()); return; }
     if (conversa.sentinela) conversa.acordadoAte = Date.now() + 40000;
+    conversa.ultimaTroca = Date.now();
     if (d.briefing){ iniciarBriefing(); return; }
     if (d.so_chamou){ enfileirarFala("Pois não?", fala.geracao); return; }
     await pedir(d.ouvido, {voz: conversa.ativa});

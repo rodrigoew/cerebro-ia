@@ -631,7 +631,7 @@ class Aplicativo:
             ce = cfg.setdefault("cerebro", {})
             if d.get("modo") in ("local", "claude", "openai", "regras"):
                 ce["modo"] = d["modo"]
-            if d.get("modelo_claude") in ("claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"):
+            if d.get("modelo_claude") in ("auto", "claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"):
                 ce["modelo_claude"] = d["modelo_claude"]
             if "silencio_ms" in d:
                 cfg.setdefault("voz", {})["silencio_ms"] = max(350, min(1500, int(d["silencio_ms"])))
@@ -878,6 +878,10 @@ class Aplicativo:
                 self.mente.criar_ideia(texto)
                 return {"ok": True, "id": info["id"], "mensagem": "Ideia guardada (também em Mente > Ideias)."}
             return {"ok": True, "id": info["id"], "mensagem": "Anotado na memória."}
+        if tipo == "rascunho_email":
+            d = dict(dados)
+            r = self.email_salvar_rascunho(int(d.pop("email_id")), d)
+            return {"ok": True, "mensagem": r["mensagem"]}
         if tipo == "memoria":
             texto = str(dados.get("texto", "")).strip()[:500]
             if not texto:
@@ -1792,7 +1796,7 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                     ce = app.cfg.setdefault("cerebro", {})
                     msgs = []
                     if corpo.get("cerebro_nuvem") and provedores.chave("claude"):
-                        ce["modo"], ce["modelo_claude"] = "claude", ce.get("modelo_claude", "claude-haiku-5-5")
+                        ce["modo"], ce["modelo_claude"] = "claude", "auto"
                         msgs.append("cérebro: Claude")
                     elif corpo.get("cerebro_nuvem"):
                         msgs.append("cérebro continua local (falta a chave do Claude em Nuvem)")

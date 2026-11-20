@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.19.0
+- O agente responde em fluxo de verdade (Claude e IA local): a primeira palavra sai enquanto ele ainda pensa ou consulta ferramentas, e a voz começa na primeira frase.
+- Claude com cache do prompt (respostas mais rápidas a partir da segunda) e modelo automático: Haiku na voz, Sonnet no texto.
+- Mais ação: lê e-mails e escreve rascunhos de resposta (com permissão), encadeia ferramentas sem pedir confirmação do óbvio e recebe um panorama do momento (contas, promessas, agenda) para pensar com contexto e avisar o que for relevante.
+- Voz: descarta trechos que não são você falando (TV, conversa ao fundo); transcrição mais rápida no processador; no modo conversa, depois de 45 s sem falar com ele, só reage ao nome do assistente.
+- FreeLLMAPI sem chaves cadastradas sai do caminho (antes cada pergunta geral tentava e falhava, somando atraso).
+- Tela inicial sugere ligar o Claude enquanto o cérebro estiver no modo local.
+
 ## 0.18.0
 - Novo cérebro em forma de agente: a IA conduz a conversa com o histórico das últimas mensagens, usa as ferramentas do Núcleo (agenda, financeiro, e-mails, memória, pessoas, promessas, clima, decisões, organizar, processos, globo, ações no computador) e responde em linguagem natural, curta e falável. As regras antigas ficam como reserva quando não há IA.
 - Ajustes > Cérebro: escolha quem pensa (Local, Claude com o crédito do Max, nuvem compatível ou regras), o modelo do Claude (Haiku, o mais rápido, ou Sonnet) e a espera do microfone.
