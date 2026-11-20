@@ -127,6 +127,25 @@ FERRAMENTAS = [
     _f("controlar_midia", "Controla a música/vídeo do computador: tocar_pausar, proxima, anterior, volume_mais, volume_menos, mudo.",
        {"acao": {"type": "string", "enum": ["tocar_pausar", "proxima", "anterior", "volume_mais", "volume_menos", "mudo"]},
         "vezes": N}, ["acao"]),
+    _f("criar_projeto", "Cria (ou atualiza) um projeto de programação de verdade no computador do usuário, em qualquer linguagem "
+       "(C#, Java, Python, JavaScript, etc.): grava todos os arquivos numa pasta em Documentos/Nucleo/Projetos e abre a pasta. "
+       "Mande o projeto completo e funcional (arquivo de projeto/build, código, README com como rodar). Para atualizar, use o "
+       "mesmo nome e mande só os arquivos novos ou alterados.",
+       {"nome": {"type": "string", "description": "nome da pasta, sem espaços (ex.: calculadora-csharp)"},
+        "descricao": S, "como_rodar": {"type": "string", "description": "comandos para compilar/rodar (ex.: dotnet run)"},
+        "arquivos": {"type": "array", "items": {"type": "object", "properties": {"caminho": S, "conteudo": S},
+                                                "required": ["caminho", "conteudo"]}}},
+       ["nome", "arquivos"]),
+    _f("ver_projeto", "Lista os projetos criados ou mostra os arquivos de um projeto (para continuar, corrigir ou explicar).",
+       {"nome": S}),
+    _f("consultar_conhecimento", "Pacotes de conhecimento do Núcleo (carros, motos, programação, lógica, Atlético-MG, trânsito de BH, "
+       "trade, mercado financeiro, canais e cortes no TikTok/YouTube). Use para perguntas desses temas e combine com o que você já "
+       "sabe; para dados do dia (placar, cotação, trânsito agora), pesquise na web.", {"tema": S, "pergunta": S}, ["pergunta"]),
+    _f("cotacao", "Cotação ao vivo de moedas (dólar, euro...), criptomoedas (bitcoin, ethereum...) e ações/FIIs da B3 pelo código "
+       "(ex.: PETR4, MXRF11) ou Ibovespa.", {"pedido": S}, ["pedido"]),
+    _f("rota", "Monta a rota no Google Maps com o trânsito em tempo real (abre na tela). Sem origem, usa a localização atual. "
+       "Em BH, combine com o pacote de trânsito e, se preciso, pesquise acidentes/interdições do dia.",
+       {"destino": S, "origem": S, "modo": {"type": "string", "enum": ["driving", "walking", "transit", "bicycling"]}}, ["destino"]),
     _f("acao_no_computador", "Faz algo no computador (abrir programa/site/pasta, ver atualizações, informações do sistema etc.).",
        {"pedido": S}, ["pedido"]),
 ]
@@ -168,9 +187,9 @@ class Agente:
             f"Agora é {DIAS[agora.weekday()]}, {agora:%d/%m/%Y %H:%M}" + (f", em {cidade}" if cidade else "") + ". "
             + (cfg.get("cerebro", {}).get("perfil", "") + " " if cfg.get("cerebro", {}).get("perfil") else "")
             + "Fale como uma pessoa: português do Brasil, natural, caloroso e direto. Responda primeiro o que foi perguntado "
-            "(sim/não/recomendação quando couber), em uma a três frases curtas, pensadas para serem ouvidas em voz alta: "
-            "sem listas, sem markdown, sem emojis, números por extenso só quando ajudar a fala. "
-            "Use as ferramentas para qualquer coisa sobre a vida do usuário (agenda, contas, e-mails, pessoas, memória); "
+            "(sim/não/recomendação quando couber). "
+            + self._regra_tamanho()
+            + "Use as ferramentas para qualquer coisa sobre a vida do usuário (agenda, contas, e-mails, pessoas, memória); "
             "nunca invente dados. Se faltar uma informação essencial (por exemplo, a data), pergunte de forma curta. "
             "Para ações que mudam algo, a ferramenta pode responder que precisa de permissão: aí pergunte ao usuário, "
             "de forma natural, se pode fazer (ex.: 'Posso marcar a reunião com o João na quinta às 15h?'). "
@@ -183,11 +202,45 @@ class Agente:
             "Quando o usuário contar algo duradouro sobre a vida dele (pessoas, preferências, rotinas, projetos, metas), "
             "guarde com guardar_memoria sem precisar ser pedido. Para fatos atuais do mundo (notícias, preços, cotações, "
             "resultados, lançamentos), use a pesquisa na web quando ela estiver disponível e diga a fonte em poucas palavras."
+            + self._especialidades()
             + ("\nO que você já sabe sobre o usuário: " + " | ".join(fixos) if fixos else "")
             + ("\nCorreções que o usuário já fez nas suas respostas (aprenda o jeito que ele prefere e não repita o erro): "
                + " | ".join(correcoes) if correcoes else "")
             + ("\nPanorama de agora: " + self._panorama() if self._panorama() else "")
         )
+
+    PROFUNDO = re.compile(r"(?i)\b(c[oó]digo|programa|projeto|script|fun[cç][aã]o|classe|api|bug|erro de|compil|"
+                          r"c#|csharp|java\b|python|javascript|typescript|node|react|sql|kotlin|swift|golang|rust|php|html|css|"
+                          r"l[oó]gica|algoritmo|enigma|charada|racioc[ií]nio|prove|demonstre|passo a passo|explique|explica|"
+                          r"compare|diferen[cç]a entre|an[aá]lise|analis|estrat[eé]gia|trade|day ?trade|swing|a[cç][oõ]es|bolsa|"
+                          r"investi|renda fixa|tesouro|cripto|bitcoin|op[cç][oõ]es|motor|mec[aâ]nic|manuten[cç]|revis[aã]o|"
+                          r"canal|tiktok|youtube|monetiz|cortes)\b")
+
+    def profundo(self, texto: str) -> bool:
+        """Perguntas que pedem pensar mais e responder por inteiro (código, lógica, finanças, mecânica, estratégia)."""
+        return bool(self.PROFUNDO.search(texto or "")) or len(texto or "") > 280
+
+    def _regra_tamanho(self) -> str:
+        if self.n.modo_voz:
+            return ("Você está sendo ouvido em voz alta: fale em uma a três frases curtas, sem listas, sem markdown e sem emojis. "
+                    "Se a resposta completa for longa (código, passo a passo, tabela, análise), fale só um resumo curto e "
+                    "natural, depois escreva uma linha contendo apenas ---TELA--- e, abaixo dela, o conteúdo completo em markdown "
+                    "(ele aparece na tela, não é falado). ")
+        return ("O usuário está lendo na tela: responda com a extensão que o assunto pede. Para conversa simples, seja breve; "
+                "para código, lógica, finanças, mecânica ou estratégia, responda por inteiro e bem organizado em markdown "
+                "(títulos curtos, listas, tabelas e blocos de código com a linguagem, como ```csharp). Código sempre completo "
+                "e pronto para rodar. Sem emojis. ")
+
+    def _especialidades(self) -> str:
+        try:
+            import conhecimento
+            lista = ", ".join(t for _, t in conhecimento.temas())
+        except Exception:
+            lista = ""
+        return ((" Você tem pacotes de conhecimento sobre: " + lista + ". Para esses temas, consulte consultar_conhecimento e "
+                 "responda como especialista (mecânico, desenvolvedor sênior, analista de mercado, historiador do Galo), sempre "
+                 "honesto sobre incertezas. Em finanças, informe e explique, mas não recomende comprar ou vender. Quando o usuário "
+                 "pedir para criar um programa ou projeto, use criar_projeto com o projeto completo.") if lista else "")
 
     def _correcoes(self) -> list[str]:
         """As respostas que o usuário corrigiu (botão de corrigir): viram exemplos do que ele espera."""
@@ -382,6 +435,33 @@ class Agente:
                          "local": e.get("local") or "", "notas": e.get("notas") or ""}
                 return self._acao("remarcar", dados, f"passar “{e['titulo']}” de {quando} para {nova_data}"
                                   + (f" às {nova_hora}" if nova_hora else " (dia inteiro)"))
+            if nome == "criar_projeto":
+                import projetos
+                dados = projetos.validar(a)
+                total = sum(len(x["conteudo"]) for x in dados["arquivos"])
+                lista = ", ".join(x["caminho"] for x in dados["arquivos"][:8]) + ("…" if len(dados["arquivos"]) > 8 else "")
+                return self._acao("projeto", dados, f"criar o projeto “{dados['nome']}” com {len(dados['arquivos'])} arquivo(s) "
+                                  f"({lista}; {total // 1024 + 1} KB) em {projetos.pasta_base(app.cfg) / dados['nome']}")
+            if nome == "ver_projeto":
+                import projetos
+                return projetos.ver(app.cfg, str(a.get("nome") or ""))
+            if nome == "consultar_conhecimento":
+                import conhecimento
+                return conhecimento.consultar(str(a.get("tema") or ""), str(a.get("pergunta") or ""))
+            if nome == "cotacao":
+                import cotacoes
+                return cotacoes.cotacao(str(a.get("pedido") or ""), app.cfg)
+            if nome == "rota":
+                import cotacoes
+                destino = str(a.get("destino") or "").strip()
+                if not destino:
+                    return "Para onde?"
+                cidade = ((app.cfg.get("clima", {}).get("locais") or [{}])[0]).get("cidade", "")
+                if cidade and cidade.lower() not in destino.lower() and "," not in destino:
+                    destino += f", {cidade}"
+                url = cotacoes.link_rota(destino, str(a.get("origem") or ""), str(a.get("modo") or "driving"))
+                self.extras["link"] = {"url": url, "rotulo": "Abrir rota no Google Maps (trânsito ao vivo)"}
+                return f"Rota pronta; um botão para abrir o Google Maps com o trânsito ao vivo aparece na tela. Destino: {destino}."
             if nome == "calcular":
                 return calcular(str(a.get("expressao", "")))
             if nome == "contar_dias":
@@ -446,6 +526,7 @@ class Agente:
         if not self.historico and not getattr(self, "_recuperado", False):
             self._recuperar_historico()
         msgs = self.historico[-10:] + [{"role": "user", "content": texto}]
+        self._profundo = self.profundo(texto)
         partes: list[str] = []
         try:
             gerador = self._laco_claude(msgs) if backend == "claude" else self._laco_openai(backend, msgs)
@@ -457,19 +538,29 @@ class Agente:
             if not partes:
                 yield ("fim", None)
                 return
-        final = re.sub(r"(?s)<think>.*?</think>", "", "".join(partes)).strip()
-        final = re.sub(r"[*#`_]{1,3}", "", final)
-        if not final:
+        bruto = re.sub(r"(?s)<think>.*?</think>", "", "".join(partes)).strip()
+        if not bruto:
             yield ("fim", None)
             return
-        self.historico = (self.historico + [{"role": "user", "content": texto}, {"role": "assistant", "content": final}])[-12:]
+        fala, _, tela = bruto.partition("---TELA---")
+        tem_md = bool(tela.strip()) or bool(re.search(r"```|^\s*#{1,4} |^\s*[-*] |^\s*\d+\. |\|.*\|", bruto, re.M))
+        markdown = (fala.strip() + ("\n\n" + tela.strip() if tela.strip() else "")) if tem_md else ""
+        # o que é falado: só o resumo (antes de ---TELA---), sem código nem marcações
+        falado = fala if tela.strip() else re.sub(r"(?s)```.*?```", " (o código está na tela) ", bruto)
+        falado = re.sub(r"(?m)^\s*\|.*\|\s*$\n?", "", falado)          # tabelas ficam só na tela
+        falado = re.sub(r"[*#`_|]{1,3}", "", falado).strip()
+        final = falado
+        self.historico = (self.historico + [{"role": "user", "content": texto}, {"role": "assistant", "content": bruto[:6000]}])[-12:]
         r = {"tipo": "conversa", "titulo": "", "linhas": [p.strip() for p in re.split(r"\n+", final) if p.strip()],
+             "markdown": markdown,
              "itens": self.extras.get("itens", []), "local": backend == "local", "agente": True,
              "motor": backend, "modelo": self._rotulo(backend), "tempos": {"total": round(time.time() - t0, 2)}}
         if self.extras.get("abrir_globo"):
             r["abrir_globo"] = self.extras["abrir_globo"]
         if self.extras.get("ics"):
             r["ics"] = self.extras["ics"]
+        if self.extras.get("link"):
+            r["link"] = self.extras["link"]
         if self.extras.get("pesquisou"):
             r["modelo"] += ", pesquisou na web"
         if self.extras.get("pendente"):
@@ -484,10 +575,16 @@ class Agente:
                      ferramenta=c.get("ferramenta"), plano=c.get("plano"))
         yield ("fim", r)
 
+    def _max_tokens(self) -> int:
+        if getattr(self, "_profundo", False):
+            return 16000
+        return 700 if self.n.modo_voz else 2500
+
     def modelo_claude(self) -> str:
         m = self.app.cfg.get("cerebro", {}).get("modelo_claude", "claude-haiku-5-5")
         if m == "auto":
-            return "claude-haiku-5-5" if self.n.modo_voz else "claude-sonnet-5-5"
+            # Haiku na conversa por voz (rápido); Sonnet no texto e em qualquer assunto que pede pensar (código, lógica, finanças)
+            return "claude-sonnet-5-5" if (getattr(self, "_profundo", False) or not self.n.modo_voz) else "claude-haiku-5-5"
         return m
 
     def _rotulo(self, backend: str) -> str:
@@ -509,7 +606,7 @@ class Agente:
         conversa = [{"role": m["role"], "content": m["content"]} for m in msgs]
         sistema = [{"type": "text", "text": self.sistema()}]
         for _ in range(max_rodadas):
-            corpo = {"model": self.modelo_claude(), "max_tokens": 700, "system": sistema, "tools": ferramentas,
+            corpo = {"model": self.modelo_claude(), "max_tokens": self._max_tokens(), "system": sistema, "tools": ferramentas,
                      "messages": conversa, "stream": True}
             req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=json.dumps(corpo).encode(),
                                          headers={"content-type": "application/json", "x-api-key": chave,
@@ -608,7 +705,7 @@ class Agente:
                             break
             else:
                 p = provedores.ativo(self.app.cfg, "auto")
-                corpo = {"model": p["modelo"], "max_tokens": 700, "messages": conversa, "tools": ferramentas}
+                corpo = {"model": p["modelo"], "max_tokens": self._max_tokens(), "messages": conversa, "tools": ferramentas}
                 req = urllib.request.Request(p["url"].rstrip("/") + "/chat/completions", data=json.dumps(corpo).encode(),
                                              headers={"content-type": "application/json",
                                                       "authorization": f"Bearer {provedores.chave_openai(self.app.cfg) or 'sem-chave'}"})

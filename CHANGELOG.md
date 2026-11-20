@@ -14,6 +14,20 @@
 - Contas exatas (porcentagens, divisões, valores em reais) e contagem de dias até uma data.
 - Controle de música e vídeo: tocar/pausar, próxima, anterior, volume e mudo.
 
+**Especialista em vários temas**
+- Pacotes de conhecimento (pasta `conhecimento/`): carros, motos (incluindo a ZX-10RR), programação, lógica, Atlético-MG, trânsito de BH, trade, mercado financeiro e canais/cortes no TikTok e YouTube. Dá para criar os seus: é só salvar um .md na pasta.
+- Respostas completas na tela: código, listas e tabelas com formatação e botão de copiar. Na voz, ela fala um resumo e mostra o resto na tela.
+- Assuntos que pedem pensar (código, lógica, finanças, mecânica) usam o Sonnet mesmo na voz, com respostas mais longas.
+- Cria projetos de programação de verdade, em qualquer linguagem, em Documentos/Nucleo/Projetos (com permissão), e continua projetos existentes.
+- Cotações ao vivo (moedas, cripto e ações da B3) e rotas no Google Maps com trânsito em tempo real.
+
+**Visual**
+- Tema Jarvis estilo HUD: fundo com grade, orbe maior e cartões de vidro com cantoneiras.
+- Cor do Jarvis: Grafite (muda de cor conforme o teor: verde, âmbar, vermelho), Verde neon, Carmim, Roxo neon, Laranja ou Azul.
+
+**Correções**
+- FreeLLMAPI: o Núcleo lê sozinho a chave unificada; Testar usa a chave digitada; Salvar guarda as duas chaves.
+
 **Widget flutuante**
 - Mini-Núcleo vivo que segue o tema (Âmbar ou Jarvis): hora e próximo compromisso, onda da voz ao ouvir, pontos em órbita ao pensar, legenda ao falar e borda vermelha em caso de risco.
 - Atalhos ao passar o mouse: conversar, briefing e abrir o Núcleo. Aparece sempre que a janela é minimizada.

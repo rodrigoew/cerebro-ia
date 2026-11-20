@@ -292,7 +292,7 @@ async function pedir(texto, opcoes = {}){
   estadoNucleo("analisando");
   palcoPergunta(texto);
   if (voz) legenda("Você", texto);
-  let vivo = null, pVivo = null, bruto = "", buffer = "";
+  let vivo = null, pVivo = null, bruto = "", buffer = "", silenciar = false;
   if (voz) interromperFala();
   const g = fala.geracao;
   const finalizar = r => {
@@ -327,8 +327,13 @@ async function pedir(texto, opcoes = {}){
           if (ev.origem === "nuvem"){ definirHumor("nuvem", 6000); }
           feed.append(vivo); rolarFeed(); emitirOnda(humor.base); palcoAoVivo(rotuloVivo);
         } else if (ev.evento === "texto"){
-          bruto += ev.texto; pVivo.textContent = bruto; rolarFeed(); palcoTexto(bruto);
-          if (voz){ buffer += ev.texto;
+          bruto += ev.texto; const mostrar = bruto.replace("---TELA---", "\n"); pVivo.textContent = mostrar; rolarFeed(); palcoTexto(mostrar);
+          if (voz && !silenciar && /---TELA---|```/.test(bruto)){            // daqui em diante é conteúdo de tela (código, tabela)
+            const ate = buffer + ev.texto, corte = ate.search(/---TELA---|```/);
+            buffer = corte >= 0 ? ate.slice(0, corte) : ""; silenciar = true;
+            if (buffer.trim()) enfileirarFala(buffer, g); buffer = "";
+          }
+          if (voz && !silenciar){ buffer += ev.texto;
             const m = buffer.match(/^([\s\S]*?[.!?…:])(\s+|$)/);
             if (m && m[1].length > 18){ enfileirarFala(m[1], g); buffer = buffer.slice(m[0].length); } }
         } else if (ev.evento === "fim") finalizar(ev.resposta);
@@ -436,9 +441,11 @@ function cartaoResposta(r, opc = {}){
     }
     return cartao;
   }
+  if (r.link && /^https:\/\//.test(r.link.url)) botoes.append(h("a",{class:"n-btn", href:r.link.url, target:"_blank", rel:"noopener"}, r.link.rotulo || "Abrir"));
   if (r.abrir) botoes.append(h("button",{class:"n-btn", onclick:()=>{ if (r.abrir.tela === "mente"){ if (r.abrir.aba === "decisoes") mt.decisao = r.abrir.id; irPara("mente"); carregarMente(r.abrir.aba); } else irPara(r.abrir.tela); }}, ({mente:"Abrir em Mente", pessoas:"Abrir em Pessoas", emails:"Abrir em E-mails", financeiro:"Abrir no Financeiro"})[r.abrir.tela] || "Abrir"));
   const conf = r.confianca ? h("span",{class:"n-conf "+r.confianca.nivel, title:r.confianca.motivo}, `confiança ${({alta:"alta",media:"média",baixa:"baixa"})[r.confianca.nivel]}`) : null;
-  const linhasEl = r.linhas.map(l => { const p = h("p",{}); if (["ia_local","claude"].includes(r.tipo) && !opc.semDigitacao) revelarTexto(p, l); else p.textContent = l; return p; });
+  const linhasEl = r.markdown ? [renderizarMarkdown(r.markdown)]
+    : r.linhas.map(l => { const p = h("p",{}); if (["ia_local","claude"].includes(r.tipo) && !opc.semDigitacao) revelarTexto(p, l); else p.textContent = l; return p; });
   const tempo = r.tempos && r.tempos.total ? h("span",{class:"n-tempo", title:"Tempo até começar a responder e tempo total"},
     (r.tempos.primeiro ? `${r.tempos.primeiro.toFixed(1).replace(".",",")} s até começar · ` : "") + `${r.tempos.total.toFixed(1).replace(".",",")} s`) : null;
   const seloFinal = (conf || tempo) ? h("span",{class:"selo"}, ...selo.childNodes, conf, tempo) : selo;
@@ -867,3 +874,56 @@ function alternarPaineis(){
 }
 
 window.alternarConversaPeloWidget = function(){ const b = document.getElementById("n-conversa"); if (b && !b.disabled) b.click(); };
+
+/* markdown seguro (sem HTML vindo da IA): títulos, listas, tabelas, negrito, código com botão de copiar */
+function renderizarMarkdown(md){
+  const raiz = h("div",{class:"md"});
+  const inline = (texto) => {
+    const frag = document.createDocumentFragment();
+    const partes = String(texto).split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/g);
+    partes.forEach(p => {
+      if (!p) return;
+      if (/^`[^`]+`$/.test(p)) frag.append(h("code",{}, p.slice(1,-1)));
+      else if (/^\*\*[^*]+\*\*$/.test(p)) frag.append(h("strong",{}, p.slice(2,-2)));
+      else if (/^\*[^*]+\*$/.test(p)) frag.append(h("em",{}, p.slice(1,-1)));
+      else frag.append(document.createTextNode(p));
+    });
+    return frag;
+  };
+  const linhas = String(md).replace(/\r/g,"").split("\n");
+  let i = 0, lista = null;
+  const fecharLista = () => { lista = null; };
+  while (i < linhas.length){
+    const l = linhas[i];
+    const cerca = l.match(/^\s*```\s*([\w#+.-]*)/);
+    if (cerca){
+      const ling = cerca[1] || "", codigo = [];
+      i++;
+      while (i < linhas.length && !/^\s*```/.test(linhas[i])){ codigo.push(linhas[i]); i++; }
+      i++; fecharLista();
+      const texto = codigo.join("\n");
+      const btn = h("button",{class:"md-copiar", onclick:async ev=>{ try { await navigator.clipboard.writeText(texto); ev.target.textContent = "Copiado"; setTimeout(()=>ev.target.textContent = "Copiar", 1600); } catch(e){} }}, "Copiar");
+      raiz.append(h("div",{class:"md-codigo"}, h("div",{class:"md-cab"}, h("span",{}, ling || "código"), btn), h("pre",{}, h("code",{}, texto))));
+      continue;
+    }
+    if (/^\s*\|.*\|\s*$/.test(l) && i + 1 < linhas.length && /^\s*\|?\s*:?-{3,}/.test(linhas[i+1])){
+      fecharLista();
+      const cel = x => x.trim().replace(/^\||\|$/g,"").split("|").map(c => c.trim());
+      const tab = h("table",{}), cab = h("tr",{}, ...cel(l).map(c => h("th",{}, inline(c))));
+      tab.append(h("thead",{}, cab)); const corpo = h("tbody",{}); i += 2;
+      while (i < linhas.length && /^\s*\|.*\|\s*$/.test(linhas[i])){ corpo.append(h("tr",{}, ...cel(linhas[i]).map(c => h("td",{}, inline(c))))); i++; }
+      tab.append(corpo); raiz.append(h("div",{class:"md-tabela"}, tab)); continue;
+    }
+    const tit = l.match(/^\s*(#{1,4})\s+(.*)/);
+    if (tit){ fecharLista(); raiz.append(h(tit[1].length <= 2 ? "h4" : "h5",{}, inline(tit[2]))); i++; continue; }
+    const item = l.match(/^\s*([-*•]|\d+[.)])\s+(.*)/);
+    if (item){
+      const ordenada = /\d/.test(item[1]);
+      if (!lista || lista.tagName !== (ordenada ? "OL" : "UL")){ lista = h(ordenada ? "ol" : "ul",{}); raiz.append(lista); }
+      lista.append(h("li",{}, inline(item[2]))); i++; continue;
+    }
+    if (!l.trim()){ fecharLista(); i++; continue; }
+    fecharLista(); raiz.append(h("p",{}, inline(l))); i++;
+  }
+  return raiz;
+}

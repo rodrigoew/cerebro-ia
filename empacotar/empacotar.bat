@@ -4,7 +4,7 @@ rem Gera a versão instalável do Núcleo (Windows). Rode a partir da pasta do p
 cd /d "%~dp0\.."
 python -m pip install --upgrade pyinstaller -r requirements.txt faster-whisper kokoro-onnx nvidia-cublas-cu12 "nvidia-cudnn-cu12>=9,<10" cryptography
 python -m PyInstaller --noconfirm --clean --windowed --name Nucleo --icon static\icone.ico ^
-  --add-data "interface.html;." --add-data "config.exemplo.json;." --add-data "VERSION;." --add-data "static;static" ^
+  --add-data "interface.html;." --add-data "config.exemplo.json;." --add-data "VERSION;." --add-data "static;static" --add-data "conhecimento;conhecimento" ^
   --collect-all faster_whisper --collect-all ctranslate2 --collect-all kokoro_onnx --collect-all espeakng_loader ^
   --collect-all phonemizer --collect-all onnxruntime --collect-all nvidia --collect-all webview ^
   --hidden-import keyring.backends.Windows app.py

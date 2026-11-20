@@ -739,6 +739,22 @@ body.modo-palco .area{padding:0}
 .p-foco button.p-dica{border-left-color:#C08BD0;opacity:.75}
 .p-foco button.p-dica:hover{opacity:1}
 
+/* respostas longas em markdown (código, listas, tabelas) */
+.md{font-size:14.5px;line-height:1.55;min-width:0;max-width:100%;overflow:hidden}
+.n-resp:has(.md){min-width:0;max-width:100%;box-sizing:border-box}
+.md p{margin:0 0 8px}.md h4{margin:12px 0 6px;font-size:16px}.md h5{margin:10px 0 4px;font-size:14.5px;opacity:.9}
+.md ul,.md ol{margin:4px 0 10px;padding-left:22px}.md li{margin:3px 0}
+.md code{font:12.5px/1.5 "Cascadia Code",Consolas,monospace;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px}
+.md-codigo{max-width:100%;box-sizing:border-box;margin:8px 0 12px;border:1px solid var(--n-linha,rgba(255,255,255,.12));border-radius:8px;overflow:hidden;background:rgba(0,0,0,.45)}
+.md-cab{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--n-suave);border-bottom:1px solid rgba(255,255,255,.08)}
+.md-copiar{all:unset;cursor:pointer;font-size:11px;padding:2px 8px;border-radius:5px;border:1px solid rgba(255,255,255,.18);text-transform:none;letter-spacing:0}
+.md-copiar:hover{background:rgba(255,255,255,.08)}
+.md-codigo pre{margin:0;padding:10px 12px;overflow:auto;max-height:440px}
+.md-codigo pre code{background:none;padding:0;white-space:pre}
+.md-tabela{overflow:auto;margin:6px 0 12px}.md table{border-collapse:collapse;font-size:13px}
+.md th,.md td{border:1px solid rgba(255,255,255,.12);padding:5px 9px;text-align:left}.md th{background:rgba(255,255,255,.06)}
+
 /* ======================= TEMA JARVIS (HUD) — cor de destaque escolhível ======================= */
 /* --j: cor principal · --jb: versão clara · --jt: tinta do texto · --jf1..3: fundo (topo, meio, base) */
 body[data-tema=jarvis]{--j:64,156,255; --jb:140,205,255; --jt:227,240,255; --jf1:#0A2257; --jf2:#061641; --jf3:#040E2C;

@@ -664,6 +664,8 @@ class Aplicativo:
                 cfg.setdefault("briefing", {})["narracao_ia"] = bool(d["narracao_ia"])
         elif secao == "cerebro":
             ce = cfg.setdefault("cerebro", {})
+            if "brapi_token" in d:
+                cfg["brapi_token"] = re.sub(r"[^\w-]", "", str(d.get("brapi_token") or ""))[:80]
             if d.get("modo") in ("local", "claude", "openai", "regras"):
                 ce["modo"] = d["modo"]
             if d.get("modelo_claude") in ("auto", "claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"):
@@ -916,6 +918,9 @@ class Aplicativo:
         if tipo == "pagar":
             self.marcar_pago(int(dados["id"]), False)
             return {"ok": True, "mensagem": f"Marquei “{dados.get('descricao', 'a conta')}” como paga."}
+        if tipo == "projeto":
+            import projetos
+            return projetos.criar(self.cfg, dados)
         if tipo in ("remarcar", "cancelar_evento"):
             e = self.memoria.q("SELECT * FROM agenda_nucleo WHERE id = ?", (int(dados["id"]),))
             if not e:
@@ -1410,6 +1415,7 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                         "acesso_lan": bool(app.cfg.get("acesso_lan")), "ip_local": _ip_local(),
                         "tema": app.cfg.get("aparencia", {}).get("tema", "ambar"),
                         "cor_jarvis": app.cfg.get("aparencia", {}).get("cor_jarvis", "azul"),
+                        "brapi_token": bool(app.cfg.get("brapi_token")),
                         "narracao_ia": app.cfg.get("briefing", {}).get("narracao_ia", True),
                         "cerebro_modo": app.cfg.get("cerebro", {}).get("modo", "local"),
                         "modelo_claude": app.cfg.get("cerebro", {}).get("modelo_claude", "claude-haiku-5-5"),

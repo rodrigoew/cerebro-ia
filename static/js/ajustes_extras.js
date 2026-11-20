@@ -143,6 +143,7 @@ async function secCerebro(){
   const silencio = h("input",{type:"range", min:"350", max:"1200", step:"50", value:String(e.voz_silencio_ms || 600), style:"width:100%"});
   const rot = h("span",{}, `${silencio.value} ms`);
   silencio.oninput = () => rot.textContent = `${silencio.value} ms`;
+  const brapi = h("input",{type:"password", placeholder: e.brapi_token ? "Token guardado (cole outro para trocar)" : "Opcional: token grátis de brapi.dev para cotações de ações"});
   const tm = e.tempo_medio;
   let aj = {}; try { aj = await api("/api/ajustes"); } catch(err){}
   const perfilAtual = (aj.perfil && aj.perfil.perfil) || "";
@@ -158,11 +159,12 @@ async function secCerebro(){
     h("label",{class:"rot"},"Quem pensa"), modo,
     h("p",{class:"ajuda", style:"margin-top:6px"},"No Claude, suas perguntas e os dados das ferramentas (agenda, e-mails, finanças) vão para a Anthropic. No Local, nada sai do computador."),
     h("label",{class:"rot"},"Modelo do Claude"), modelo,
+    h("label",{class:"rot"},"Cotações de ações da B3 (opcional)"), brapi,
     h("label",{class:"rot"},"Espera para entender que você parou de falar"), h("div",{style:"display:flex;gap:10px;align-items:center"}, silencio, rot),
     tm ? h("p",{class:"ajuda"}, `Tempo médio das últimas ${tm.respostas} respostas: ${String(tm.total).replace(".",",")} s.`) : null,
     h("div",{class:"acoes-aj"},
       h("button",{class:"btn primario", onclick:async()=>{
-        try { await api("/api/ajustes",{method:"PUT",body:JSON.stringify({secao:"cerebro", dados:{modo:modo.value, modelo_claude:modelo.value, silencio_ms:+silencio.value}})}); avisar("Salvo."); await carregarEstado(); } catch(err){ avisar(err.message); } }},"Salvar"),
+        try { await api("/api/ajustes",{method:"PUT",body:JSON.stringify({secao:"cerebro", dados:{modo:modo.value, modelo_claude:modelo.value, silencio_ms:+silencio.value, ...(brapi.value.trim() ? {brapi_token:brapi.value.trim()} : {})}})}); avisar("Salvo."); await carregarEstado(); } catch(err){ avisar(err.message); } }},"Salvar"),
       h("button",{class:"btn", onclick:async()=>{
         if (!confirm("Ligar o modo natural?\n\n• Cérebro: Claude (suas perguntas e dados vão para a Anthropic)\n• Voz: Thalita (o texto falado vai para a Microsoft)\n• Ações simples (agenda, lembretes, anotações, memória) sem perguntar\n\nVocê pode desfazer tudo aqui.")) return;
         try { const r = await api("/api/modo-natural",{method:"POST",body:JSON.stringify({cerebro_nuvem:true, voz_natural:true, autonomia:true})}); avisar(r.mensagem); await carregarEstado(); carregarAjustes(); } catch(err){ avisar(err.message); } }},"Ligar modo natural")));
