@@ -139,13 +139,34 @@ FERRAMENTAS = [
     _f("ver_projeto", "Lista os projetos criados ou mostra os arquivos de um projeto (para continuar, corrigir ou explicar).",
        {"nome": S}),
     _f("consultar_conhecimento", "Pacotes de conhecimento do Núcleo (carros, motos, programação, lógica, Atlético-MG, trânsito de BH, "
-       "trade, mercado financeiro, canais e cortes no TikTok/YouTube). Use para perguntas desses temas e combine com o que você já "
+       "day trade, mercado financeiro, renda extra, canais e cortes no TikTok/YouTube, desenvolvimento de apps/sites/jogos, armas "
+       "(história, lei e segurança)). Use para perguntas desses temas e combine com o que você já "
        "sabe; para dados do dia (placar, cotação, trânsito agora), pesquise na web.", {"tema": S, "pergunta": S}, ["pergunta"]),
     _f("cotacao", "Cotação ao vivo de moedas (dólar, euro...), criptomoedas (bitcoin, ethereum...) e ações/FIIs da B3 pelo código "
        "(ex.: PETR4, MXRF11) ou Ibovespa.", {"pedido": S}, ["pedido"]),
     _f("rota", "Monta a rota no Google Maps com o trânsito em tempo real (abre na tela). Sem origem, usa a localização atual. "
        "Em BH, combine com o pacote de trânsito e, se preciso, pesquise acidentes/interdições do dia.",
        {"destino": S, "origem": S, "modo": {"type": "string", "enum": ["driving", "walking", "transit", "bicycling"]}}, ["destino"]),
+    _f("wikipedia", "Consulta a Wikipédia em português e devolve o resumo com o link da fonte. Use para fatos de história, geografia, "
+       "ciência, biografias, países, datas; cite a fonte quando a resposta depender dela.", {"consulta": S}, ["consulta"]),
+    _f("matematica", "Matemática exata (não calcule de cabeça): resolver equações e sistemas (separe com ';'), derivar, integrar "
+       "(ponto 'a:b' para integral definida), limite (ponto = valor ou 'oo'), fatorar, expandir, simplificar, avaliar.",
+       {"operacao": {"type": "string", "enum": ["resolver", "derivar", "integrar", "limite", "fatorar", "expandir", "simplificar", "avaliar"]},
+        "expressao": S, "variavel": S, "ponto": S}, ["operacao", "expressao"]),
+    _f("converter_unidade", "Converte unidades: comprimento, massa, tempo, temperatura, velocidade, área, volume, dados, energia, "
+       "potência (cv, hp, kW) e pressão (psi, bar).", {"valor": N, "de": S, "para": S}, ["valor", "de", "para"]),
+    _f("massa_molar", "Química: massa molar de uma fórmula (ex.: H2SO4, Ca(OH)2, CuSO4·5H2O).", {"formula": S}, ["formula"]),
+    _f("plano_trade", "Lê ou ajusta o plano de risco do usuário para day trade: capital, risco_pct por operação, perda_diaria_pct, "
+       "meta_diaria_pct, max_operacoes_dia, custo_por_contrato. Sem campos, só lê.",
+       {"capital": N, "risco_pct": N, "perda_diaria_pct": N, "meta_diaria_pct": N, "max_operacoes_dia": N, "custo_por_contrato": N}),
+    _f("dimensionar_posicao", "Quantos contratos (WIN, WDO, IND, DOL) ou ações operar para respeitar o risco do plano. stop = distância "
+       "do stop em pontos (futuros) ou em reais por ação.", {"ativo": S, "stop": N, "capital": N, "risco_pct": N, "preco": N},
+       ["ativo", "stop"]),
+    _f("registrar_operacao", "Registra uma operação no diário de trade (o usuário conta como foi) e avisa se o limite do dia foi atingido.",
+       {"ativo": S, "lado": {"type": "string", "enum": ["compra", "venda"]}, "quantidade": N, "entrada": N, "saida": N, "stop": N,
+        "setup": S, "nota": S, "data": S, "custos": N}, ["ativo", "lado", "entrada", "saida"]),
+    _f("desempenho_trade", "Estatísticas do diário de trade: acerto, payoff, expectativa, drawdown, resultado por setup e IR estimado.",
+       {"dias": N}),
     _f("acao_no_computador", "Faz algo no computador (abrir programa/site/pasta, ver atualizações, informações do sistema etc.).",
        {"pedido": S}, ["pedido"]),
 ]
@@ -462,6 +483,26 @@ class Agente:
                 url = cotacoes.link_rota(destino, str(a.get("origem") or ""), str(a.get("modo") or "driving"))
                 self.extras["link"] = {"url": url, "rotulo": "Abrir rota no Google Maps (trânsito ao vivo)"}
                 return f"Rota pronta; um botão para abrir o Google Maps com o trânsito ao vivo aparece na tela. Destino: {destino}."
+            if nome in ("wikipedia", "matematica", "converter_unidade", "massa_molar"):
+                import saber
+                if nome == "wikipedia":
+                    return saber.wikipedia(str(a.get("consulta") or ""))
+                if nome == "matematica":
+                    return saber.matematica(str(a.get("operacao") or ""), str(a.get("expressao") or ""),
+                                            str(a.get("variavel") or "x"), str(a.get("ponto") or ""))
+                if nome == "converter_unidade":
+                    return saber.converter(float(a.get("valor") or 0), str(a.get("de") or ""), str(a.get("para") or ""))
+                return saber.massa_molar(str(a.get("formula") or ""))
+            if nome in ("plano_trade", "dimensionar_posicao", "registrar_operacao", "desempenho_trade"):
+                import trade
+                if nome == "plano_trade":
+                    return trade.plano(app, {k: v for k, v in a.items() if v not in (None, "")})
+                if nome == "dimensionar_posicao":
+                    return trade.dimensionar(app, str(a.get("ativo") or ""), float(a.get("stop") or 0), float(a.get("capital") or 0),
+                                             float(a.get("risco_pct") or 0), float(a.get("preco") or 0))
+                if nome == "registrar_operacao":
+                    return trade.registrar(app, a)
+                return trade.desempenho(app, int(float(a.get("dias") or 30)))
             if nome == "calcular":
                 return calcular(str(a.get("expressao", "")))
             if nome == "contar_dias":

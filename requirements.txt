@@ -9,3 +9,4 @@ pillow>=10
 pynput>=1.7
 pygetwindow>=0.0.9
 edge-tts>=6.1
+sympy>=1.12

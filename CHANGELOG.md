@@ -20,6 +20,10 @@
 - Assuntos que pedem pensar (código, lógica, finanças, mecânica) usam o Sonnet mesmo na voz, com respostas mais longas.
 - Cria projetos de programação de verdade, em qualquer linguagem, em Documentos/Nucleo/Projetos (com permissão), e continua projetos existentes.
 - Cotações ao vivo (moedas, cripto e ações da B3) e rotas no Google Maps com trânsito em tempo real.
+- Wikipédia integrada (resumo com link da fonte), matemática exata (equações, derivadas, integrais, limites), conversão de unidades e massa molar em química.
+- Day trade com disciplina: plano de risco, dimensionamento de posição (WIN, WDO, IND, DOL e ações), diário de operações com estatísticas (acerto, payoff, expectativa, drawdown, resultado por setup, IR estimado) e aviso para parar quando o limite do dia é atingido. O Núcleo não envia ordens.
+- Novos pacotes: day trade a fundo, renda extra, apps/sites/jogos e armas (história, legislação e segurança).
+- Nova dependência: sympy (rode `pip install -r requirements.txt` após atualizar).
 
 **Visual**
 - Tema Jarvis estilo HUD: fundo com grade, orbe maior e cartões de vidro com cantoneiras.
