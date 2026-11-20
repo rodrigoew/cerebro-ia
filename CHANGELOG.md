@@ -1,47 +1,43 @@
 # Histórico de versões
 
-## 0.21.0 — pacote mínimo de inteligência e widget novo
+## 0.22.0 — inteligência geral, cérebro na nuvem e visual Jarvis
 
-**Conhecimento**
-- Perfil "Sobre você" editável em Ajustes > Cérebro, com até 4000 caracteres (antes era cortado em 600 e não dava para editar depois).
-- As correções que você faz nas respostas viram exemplos no cérebro: ele aprende o jeito que você prefere.
-- A conversa recente (últimas 3 horas) continua depois de reiniciar o app, para entender "isso" e "e amanhã?".
+Grande salto desde a 0.20.0: ela passa a conversar de verdade pelo Claude, virou especialista em vários assuntos, ganhou dezenas de ações e um visual novo.
 
-**Ações**
-- Remarcar e cancelar compromissos da agenda do Núcleo, junto com os avisos automáticos deles.
-- Cronômetro: "me avisa daqui a 20 minutos".
-- Lembretes na hora também são falados em voz alta.
-- Contas exatas (porcentagens, divisões, valores em reais) e contagem de dias até uma data.
-- Controle de música e vídeo: tocar/pausar, próxima, anterior, volume e mudo.
+**Cérebro e respostas**
+- Perfil "Sobre você" editável em Ajustes > Cérebro, até 4000 caracteres (antes cortava em 600 e não dava para editar).
+- Aprende com as suas correções e retoma a conversa recente (últimas 3 horas) depois de reiniciar.
+- Respostas completas na tela (código, listas e tabelas com formatação e botão de copiar); na voz, fala um resumo e mostra o resto na tela.
+- Assuntos que exigem pensar (código, lógica, finanças, mecânica) usam o modelo mais forte (Sonnet) mesmo na voz.
 
-**Especialista em vários temas**
-- Pacotes de conhecimento (pasta `conhecimento/`): carros, motos (incluindo a ZX-10RR), programação, lógica, Atlético-MG, trânsito de BH, trade, mercado financeiro e canais/cortes no TikTok e YouTube. Dá para criar os seus: é só salvar um .md na pasta.
-- Respostas completas na tela: código, listas e tabelas com formatação e botão de copiar. Na voz, ela fala um resumo e mostra o resto na tela.
-- Assuntos que pedem pensar (código, lógica, finanças, mecânica) usam o Sonnet mesmo na voz, com respostas mais longas.
-- Cria projetos de programação de verdade, em qualquer linguagem, em Documentos/Nucleo/Projetos (com permissão), e continua projetos existentes.
-- Cotações ao vivo (moedas, cripto e ações da B3) e rotas no Google Maps com trânsito em tempo real.
-- Wikipédia integrada (resumo com link da fonte), matemática exata (equações, derivadas, integrais, limites), conversão de unidades e massa molar em química.
-- Day trade com disciplina: plano de risco, dimensionamento de posição (WIN, WDO, IND, DOL e ações), diário de operações com estatísticas (acerto, payoff, expectativa, drawdown, resultado por setup, IR estimado) e aviso para parar quando o limite do dia é atingido. O Núcleo não envia ordens.
-- Novos pacotes: day trade a fundo, renda extra, apps/sites/jogos e armas (história, legislação e segurança).
-- Sete novos pacotes de conhecimento: primeiros socorros, cuidados com cães (e com o Hulk), paternidade e desenvolvimento infantil, marketing/tráfego pago/vendas e negociação, imposto de renda e seguros, carreira em tecnologia e inglês (método de prática conversacional). Total de 24 temas.
-- Cortes automáticos (`criar_cortes`): transcreve um vídeo, acha os melhores trechos e gera Shorts/TikTok/Reels verticais 9:16 com legenda embutida, salvos em Documentos/Nucleo/Cortes. Reaproveita o Whisper da voz; baixa de link com yt-dlp. Não publica.
-- Pacote de segurança da informação: fundamentos, OWASP, metodologia de pentest, ferramentas por categoria, lei brasileira e carreira (sem malware, exploits ou pirataria).
-- Nova dependência: yt-dlp (para baixar de links; o resto funciona com arquivos locais).
-- Saúde: histórico de exames de sangue (guarda cada coleta, compara com as referências e com o exame anterior, mostra a evolução de cada marcador e avisa valores que pedem médico logo). Fica só no banco local.
+**Ações novas**
+- Agenda: remarcar e cancelar compromissos (com os avisos deles); cronômetro ("me avisa daqui a 20 minutos"); lembrete falado em voz alta.
+- Contas: matemática exata (equações, derivadas, integrais, limites), contas de dinheiro e porcentagem, contagem de dias, conversão de unidades e massa molar (química).
+- Conhecimento ao vivo: Wikipédia com fonte, cotações (moedas, cripto e ações da B3) e rotas no Google Maps com trânsito.
+- Mídia: controle de música e vídeo (tocar/pausar, próxima, volume, mudo).
+- Criar projetos de programação de verdade, em qualquer linguagem, em Documentos/Nucleo/Projetos (continua projetos existentes).
+- Cortes automáticos: transcreve um vídeo, acha os melhores trechos e gera Shorts/TikTok/Reels verticais 9:16 com legenda, em Documentos/Nucleo/Cortes. Não publica.
+- Day trade: plano de risco, dimensionamento de posição (WIN, WDO, IND, DOL e ações) e diário com estatísticas (acerto, payoff, expectativa, drawdown, IR estimado), avisando para parar no limite do dia. Não envia ordens.
+- Saúde: histórico de exames de sangue (compara com as referências e com o exame anterior, mostra a evolução e avisa o que pede médico). Fica só no banco local.
 - Finanças de empresa: VPL, TIR, payback, ponto de equilíbrio, parcela (Price), margem e markup.
-- Novos pacotes: psicologia e psiquiatria, musculação e anabolizantes (redução de danos, sem doses ou ciclos), exames de sangue e gestão de pessoas/empresas/finanças.
-- Nova dependência: sympy (rode `pip install -r requirements.txt` após atualizar).
+
+**Pacotes de conhecimento (24 temas, pasta `conhecimento/` — dá para criar os seus salvando um .md)**
+- Paixões e dia a dia: carros, motos (com a ZX-10RR), Atlético-MG, trânsito de BH, cuidados com cães (o Hulk), paternidade, primeiros socorros.
+- Tecnologia: programação, apps/sites/jogos, lógica, segurança da informação, carreira em tecnologia, inglês.
+- Dinheiro: day trade, mercado financeiro, renda extra, marketing e vendas, imposto de renda e seguros, gestão.
+- Saúde e mente: psicologia e psiquiatria, musculação e anabolizantes (redução de danos, sem doses ou ciclos), exames de sangue.
+- Outros: canais e cortes, armas (história, lei e segurança).
 
 **Visual**
 - Tema Jarvis estilo HUD: fundo com grade, orbe maior e cartões de vidro com cantoneiras.
-- Cor do Jarvis: Grafite (muda de cor conforme o teor: verde, âmbar, vermelho), Verde neon, Carmim, Roxo neon, Laranja ou Azul.
+- Cor do Jarvis: Grafite (muda para verde, âmbar ou vermelho conforme o teor), Verde neon, Carmim, Roxo neon, Laranja ou Azul.
+- Widget flutuante repaginado, seguindo o tema e a cor.
 
 **Correções**
-- FreeLLMAPI: o Núcleo lê sozinho a chave unificada; Testar usa a chave digitada; Salvar guarda as duas chaves.
+- FreeLLMAPI: o Núcleo lê sozinho a chave unificada; Testar usa a chave digitada; Salvar guarda as duas chaves; leitura compatível com Windows.
 
-**Widget flutuante**
-- Mini-Núcleo vivo que segue o tema (Âmbar ou Jarvis): hora e próximo compromisso, onda da voz ao ouvir, pontos em órbita ao pensar, legenda ao falar e borda vermelha em caso de risco.
-- Atalhos ao passar o mouse: conversar, briefing e abrir o Núcleo. Aparece sempre que a janela é minimizada.
+**Dependências novas** (rode `pip install -r requirements.txt` depois de atualizar)
+- sympy (matemática exata) e yt-dlp (baixar vídeo de link para os cortes; com arquivo local não precisa).
 
 ## 0.20.0
 - Briefing escrito pela IA: o Claude (ou a IA local) transforma os dados do dia numa narração corrida e natural, mantendo cartões e fatos.
