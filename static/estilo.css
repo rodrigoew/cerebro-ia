@@ -751,3 +751,59 @@ body[data-tema=jarvis] .p-foco button, body[data-tema=jarvis] .p-cartao .n-resp,
 body[data-tema=jarvis] .p-barra .n-comando{background:rgba(6,18,40,.82);border-color:rgba(90,160,255,.35)}
 body[data-tema=jarvis] .n-mic{border-color:rgba(90,160,255,.35)}
 body[data-tema=jarvis] .p-icone, body[data-tema=jarvis] .p-abas button{background:rgba(8,22,46,.6)}
+
+/* ======================= JARVIS HUD (mais próximo do vídeo de referência) ======================= */
+body[data-tema=jarvis]{--hud:#7FD3FF; --hud-forte:#B8E8FF; --hud-linha:rgba(120,200,255,.42); --sans-hud:"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif}
+/* fundo: azul-marinho iluminado no centro, grade de prancheta visível e vinheta nas bordas */
+body[data-tema=jarvis] .tela.nucleo, body[data-tema=jarvis] .briefing{
+  background:radial-gradient(ellipse 85% 80% at 50% 45%, transparent 55%, rgba(1,5,18,.55) 100%),
+             radial-gradient(1150px 780px at 50% 44%, rgba(36,120,255,.42), rgba(20,70,190,.16) 45%, transparent 70%),
+             linear-gradient(180deg,#0A2257 0%,#061641 55%,#040E2C 100%)}
+body[data-tema=jarvis] .tela.nucleo::before, body[data-tema=jarvis] .briefing::before{opacity:1;
+  background-image:linear-gradient(rgba(120,190,255,.13) 1px, transparent 1px), linear-gradient(90deg, rgba(120,190,255,.13) 1px, transparent 1px),
+                   linear-gradient(rgba(120,190,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(120,190,255,.07) 1px, transparent 1px);
+  background-size:176px 176px,176px 176px,44px 44px,44px 44px;
+  -webkit-mask-image:radial-gradient(ellipse 75% 70% at 50% 45%, #000 40%, transparent 100%);mask-image:radial-gradient(ellipse 75% 70% at 50% 45%, #000 40%, transparent 100%)}
+
+/* cartões: vidro azul, borda ciano, brilho e cantoneiras de HUD */
+body[data-tema=jarvis] .b-cartao, body[data-tema=jarvis] .p-foco button, body[data-tema=jarvis] .p-cartao .n-resp{
+  --c:rgba(150,220,255,.95);
+  background:
+    linear-gradient(var(--c),var(--c)) top left/14px 2px no-repeat, linear-gradient(var(--c),var(--c)) top left/2px 14px no-repeat,
+    linear-gradient(var(--c),var(--c)) top right/14px 2px no-repeat, linear-gradient(var(--c),var(--c)) top right/2px 14px no-repeat,
+    linear-gradient(var(--c),var(--c)) bottom left/14px 2px no-repeat, linear-gradient(var(--c),var(--c)) bottom left/2px 14px no-repeat,
+    linear-gradient(var(--c),var(--c)) bottom right/14px 2px no-repeat, linear-gradient(var(--c),var(--c)) bottom right/2px 14px no-repeat,
+    linear-gradient(180deg, rgba(34,92,190,.50), rgba(10,36,92,.62));
+  border:1px solid var(--hud-linha);border-radius:6px;
+  box-shadow:inset 0 0 0 1px rgba(140,210,255,.05), inset 0 1px 0 rgba(180,230,255,.14), 0 10px 34px rgba(0,16,70,.5), 0 0 26px rgba(60,160,255,.20);
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+body[data-tema=jarvis] .p-foco button{border-left-width:1px}
+body[data-tema=jarvis] .b-cartao[data-nivel=atencao]{--c:rgba(255,190,110,.95);border-color:rgba(255,180,90,.5)}
+body[data-tema=jarvis] .b-cartao[data-nivel=risco]{--c:rgba(255,120,110,.95);border-color:rgba(255,100,90,.55)}
+body[data-tema=jarvis] .b-cartao .cab{text-transform:uppercase;letter-spacing:.16em;font-size:10.5px;font-weight:600;color:var(--hud);
+  padding-bottom:7px;border-bottom:1px solid rgba(120,200,255,.18);margin-bottom:10px}
+body[data-tema=jarvis] .b-cartao .cab i{background:var(--hud);box-shadow:0 0 10px var(--hud)}
+body[data-tema=jarvis] .b-cartao h4, body[data-tema=jarvis] .p-saudacao, body[data-tema=jarvis] .n-estado, body[data-tema=jarvis] .b-noticia strong{
+  font-family:var(--sans-hud);letter-spacing:.005em}
+body[data-tema=jarvis] .b-cartao h4{font-weight:650;color:#EAF6FF}
+body[data-tema=jarvis] .b-cartao li b{color:var(--hud-forte)}
+body[data-tema=jarvis] .b-clima .temp{color:#DFF3FF;text-shadow:0 0 18px rgba(110,200,255,.55);font-family:var(--sans-hud);font-weight:300}
+body[data-tema=jarvis] .b-noticia img{border:1px solid rgba(120,200,255,.3);border-radius:4px}
+
+/* rótulos de estado em caixa alta espaçada, como "FALANDO" no vídeo */
+body[data-tema=jarvis] #b-estado{color:var(--hud-forte);border-color:rgba(120,200,255,.5);background:rgba(10,40,100,.55);
+  letter-spacing:.32em;box-shadow:0 0 18px rgba(80,170,255,.35)}
+body[data-tema=jarvis] .n-estado{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.32em;color:var(--hud-forte);
+  text-shadow:0 0 12px rgba(110,200,255,.6)}
+body[data-tema=jarvis] .n-sub{color:rgba(170,210,245,.7)}
+body[data-tema=jarvis] .p-saudacao{font-weight:300;color:#EAF6FF;text-shadow:0 0 30px rgba(90,170,255,.35)}
+body[data-tema=jarvis] .p-pergunta{color:rgba(170,210,245,.75)}
+body[data-tema=jarvis] .b-legenda{text-shadow:0 2px 14px rgba(0,10,40,.9)}
+
+/* barra de comando e botões com brilho ciano */
+body[data-tema=jarvis] .p-barra .n-comando{background:rgba(8,30,76,.72);border-color:var(--hud-linha);
+  box-shadow:0 0 0 1px rgba(140,210,255,.05) inset, 0 0 28px rgba(60,150,255,.22)}
+body[data-tema=jarvis] .n-mic{background:rgba(20,70,160,.35);border-color:var(--hud-linha);color:var(--hud-forte)}
+body[data-tema=jarvis] .n-mic:hover, body[data-tema=jarvis] .n-mic.ligado{box-shadow:0 0 18px rgba(90,180,255,.55)}
+body[data-tema=jarvis] .p-icone, body[data-tema=jarvis] .p-abas button, body[data-tema=jarvis] .b-ctrl button{
+  background:rgba(10,36,90,.55);border-color:var(--hud-linha);color:#D6EEFF}

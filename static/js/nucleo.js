@@ -60,8 +60,12 @@ function emitirOnda(nome){ humor.ondas.push({r:100, a:.9, cor:(PALETAS[nome] || 
 /* Tema Jarvis: uma esfera de fios de luz que ondulam e giram em 3D, com brilho aditivo. */
 function desenharJarvis(ctx, cx, cy, t, energia, cor, brilho, particulas){
   ctx.save(); ctx.globalCompositeOperation = "lighter";
-  const R = 150 + nucleo.nivel * 70;
-  const fios = 9;
+  const R = 172 + nucleo.nivel * 70;
+  const fios = 11;
+  // halo de fundo: dá o "brilho de tela" do vídeo
+  const halo = ctx.createRadialGradient(cx, cy, R * .2, cx, cy, R * 1.45);
+  halo.addColorStop(0, rgba(brilho, .16 + energia * .12)); halo.addColorStop(.6, rgba(cor, .06)); halo.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(cx, cy, R * 1.45, 0, Math.PI * 2); ctx.fill();
   for (let f = 0; f < fios; f++){
     const inclina = (f / fios) * Math.PI + t * (.25 + f * .03);          // cada fio é um anel inclinado
     const achata = Math.cos(t * .6 + f * .9) * .85;                       // gira em torno do eixo: vira elipse
@@ -73,9 +77,9 @@ function desenharJarvis(ctx, cx, cy, t, energia, cor, brilho, particulas){
       const xr = x * Math.cos(inclina) - y * Math.sin(inclina), yr = x * Math.sin(inclina) + y * Math.cos(inclina);
       k ? ctx.lineTo(cx + xr, cy + yr) : ctx.moveTo(cx + xr, cy + yr);
     }
-    ctx.strokeStyle = rgba(f % 3 === 0 ? brilho : cor, .22 + energia * .25);
-    ctx.lineWidth = f % 3 === 0 ? 2.4 : 1.4;
-    ctx.shadowColor = rgba(brilho, .9); ctx.shadowBlur = 14 + energia * 18;
+    ctx.strokeStyle = rgba(f % 3 === 0 ? brilho : cor, .34 + energia * .3);
+    ctx.lineWidth = f % 3 === 0 ? 3.2 : 1.8;
+    ctx.shadowColor = rgba(brilho, 1); ctx.shadowBlur = 20 + energia * 22;
     ctx.stroke();
   }
   ctx.shadowBlur = 0;
