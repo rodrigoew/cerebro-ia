@@ -454,7 +454,7 @@ class Aplicativo:
         cache = getattr(self, "_ctx_widget", None)
         if cache and agora - cache[0] < 30:
             return cache[1]
-        info = {"tema": self.cfg.get("aparencia", {}).get("tema", "ambar"), "assistente": self.cfg.get("assistente", {}).get("nome", "Núcleo"),
+        info = {"tema": self.cfg.get("aparencia", {}).get("tema", "ambar"), "cor": self.cfg.get("aparencia", {}).get("cor_jarvis", "azul"), "assistente": self.cfg.get("assistente", {}).get("nome", "Núcleo"),
                 "proximo": None, "alerta": "normal", "alerta_texto": ""}
         try:
             ag = self.agora()
@@ -658,6 +658,8 @@ class Aplicativo:
         elif secao == "aparencia":
             if d.get("tema") in ("ambar", "jarvis"):
                 cfg.setdefault("aparencia", {})["tema"] = d["tema"]
+            if d.get("cor_jarvis") in ("azul", "carmim", "roxo", "verde", "laranja"):
+                cfg.setdefault("aparencia", {})["cor_jarvis"] = d["cor_jarvis"]
             if "narracao_ia" in d:
                 cfg.setdefault("briefing", {})["narracao_ia"] = bool(d["narracao_ia"])
         elif secao == "cerebro":
@@ -1407,6 +1409,7 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                         "vigia": app.vigia.estado(), "globo": app.globo.estado(),
                         "acesso_lan": bool(app.cfg.get("acesso_lan")), "ip_local": _ip_local(),
                         "tema": app.cfg.get("aparencia", {}).get("tema", "ambar"),
+                        "cor_jarvis": app.cfg.get("aparencia", {}).get("cor_jarvis", "azul"),
                         "narracao_ia": app.cfg.get("briefing", {}).get("narracao_ia", True),
                         "cerebro_modo": app.cfg.get("cerebro", {}).get("modo", "local"),
                         "modelo_claude": app.cfg.get("cerebro", {}).get("modelo_claude", "claude-haiku-5-5"),

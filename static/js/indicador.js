@@ -4,6 +4,7 @@
    Falando: cresce e mostra a legenda. Risco: borda pulsa em vermelho. Passe o mouse para os atalhos. */
 const HUMOR = {normal:null, atencao:[232,137,58], risco:[224,72,62], sucesso:[143,196,154], nuvem:[192,139,208], aprendendo:[236,214,150]};
 const BASE = {ambar:[217,168,69], jarvis:[92,200,255]};
+const CORES_J = {azul:[92,200,255], carmim:[255,38,88], roxo:[186,66,255], verde:[24,236,132], laranja:[255,118,18]};
 const ROTULOS = {sentinela:"aguardando", conversa:"escutando", ouvindo:"ouvindo", transcrevendo:"entendendo",
   analisando:"pensando", claude:"pensando", falando:"falando", confirmar:"confirme na tela"};
 const ATIVOS = new Set(["ouvindo","transcrevendo","analisando","falando","confirmar","claude"]);
@@ -14,7 +15,7 @@ let cor = [217,168,69], energia = 0, t = 0, tamAtual = "", hist = new Array(28).
 const $ = id => document.getElementById(id);
 const cv = $("cv"), ctx = cv.getContext("2d"), onda = $("onda"), octx = onda.getContext("2d");
 
-function alvoCor(){ return HUMOR[p.humor] || BASE[p.tema] || BASE.ambar; }
+function alvoCor(){ return HUMOR[p.humor] || (p.tema === "jarvis" ? CORES_J[p.cor] || BASE.jarvis : BASE.ambar); }
 
 function orbe(){
   const W = cv.width, c = W/2, rgb = cor.map(Math.round).join(","), jarvis = p.tema === "jarvis";
@@ -100,6 +101,7 @@ function linha2(){
 
 function pintar(){
   document.body.dataset.tema = p.tema === "jarvis" ? "jarvis" : "ambar";
+  document.body.dataset.cor = p.cor || "azul";
   document.body.classList.toggle("ouvindo", p.estado === "ouvindo" || p.estado === "conversa");
   const agora = new Date();
   $("hora").textContent = agora.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});

@@ -30,12 +30,22 @@ const PALETAS = {
   aprendendo: {anel:[236,214,150], brilho:[255,240,196], miolo:["#FFFBEF","#F3DE9C","#8C7330"], rotulo:"Aprendendo"},
 };
 const NORMAL_AMBAR = {...PALETAS.normal};
-const NORMAL_JARVIS = {anel:[64,156,255], brilho:[140,205,255], miolo:["#E6F4FF","#7CC4FF","#1A4E9C"], rotulo:"Tudo em ordem"};
-let TEMA = "ambar";
-function aplicarTema(nome){
+const CORES_JARVIS = {
+  azul:    {anel:[64,156,255], brilho:[140,205,255], miolo:["#E6F4FF","#7CC4FF","#1A4E9C"]},
+  carmim:  {anel:[255,38,88],  brilho:[255,150,176], miolo:["#FFE6EC","#FF6F92","#8A0F2E"]},
+  roxo:    {anel:[186,66,255], brilho:[226,164,255], miolo:["#F6E8FF","#C98BFF","#4E168A"]},
+  verde:   {anel:[24,236,132], brilho:[150,255,204], miolo:["#E8FFF3","#6CF5B4","#0B6B3E"]},
+  laranja: {anel:[255,118,18], brilho:[255,196,122], miolo:["#FFF0E0","#FFAA55","#8A3D05"]},
+};
+let NORMAL_JARVIS = {...CORES_JARVIS.azul, rotulo:"Tudo em ordem"};
+let TEMA = "ambar", COR_JARVIS = "azul";
+function aplicarTema(nome, cor){
   TEMA = nome === "jarvis" ? "jarvis" : "ambar";
+  if (cor && CORES_JARVIS[cor]) COR_JARVIS = cor;
+  NORMAL_JARVIS = {...CORES_JARVIS[COR_JARVIS], rotulo:"Tudo em ordem"};
   PALETAS.normal = TEMA === "jarvis" ? NORMAL_JARVIS : NORMAL_AMBAR;
   document.body.dataset.tema = TEMA;
+  document.body.dataset.cor = COR_JARVIS;
   if (typeof definirHumor === "function") definirHumor(humor.atual);
 }
 const humor = {atual:"normal", base:"normal", cor:[217,168,69], brilho:[255,207,110], ondas:[], timer:null};

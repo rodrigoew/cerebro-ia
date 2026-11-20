@@ -739,71 +739,67 @@ body.modo-palco .area{padding:0}
 .p-foco button.p-dica{border-left-color:#C08BD0;opacity:.75}
 .p-foco button.p-dica:hover{opacity:1}
 
-/* ======================= TEMA JARVIS (azul) ======================= */
-body[data-tema=jarvis]{--n-fundo:#040915; --n-painel:rgba(10,24,48,.72); --n-tinta:#E3F0FF; --n-suave:#8FA8C8}
-body[data-tema=jarvis] .tela.nucleo{background:radial-gradient(900px 620px at 50% 38%, rgba(40,120,255,.20), transparent 62%),
-  radial-gradient(800px 500px at 90% 95%, rgba(80,60,220,.10), transparent 60%), var(--n-fundo)}
-body[data-tema=jarvis] .tela.nucleo::before{background-image:linear-gradient(rgba(90,160,255,.06) 1px, transparent 1px),
-  linear-gradient(90deg, rgba(90,160,255,.06) 1px, transparent 1px)}
-body[data-tema=jarvis] .briefing{background:radial-gradient(1000px 700px at 50% 40%, rgba(40,120,255,.22), transparent 62%), #030812}
-body[data-tema=jarvis] .p-saudacao, body[data-tema=jarvis] .n-estado{color:#CFE6FF}
-body[data-tema=jarvis] .p-foco button, body[data-tema=jarvis] .p-cartao .n-resp, body[data-tema=jarvis] .b-cartao{background:rgba(8,22,46,.66)}
-body[data-tema=jarvis] .p-barra .n-comando{background:rgba(6,18,40,.82);border-color:rgba(90,160,255,.35)}
-body[data-tema=jarvis] .n-mic{border-color:rgba(90,160,255,.35)}
-body[data-tema=jarvis] .p-icone, body[data-tema=jarvis] .p-abas button{background:rgba(8,22,46,.6)}
+/* ======================= TEMA JARVIS (HUD) — cor de destaque escolhível ======================= */
+/* --j: cor principal · --jb: versão clara · --jt: tinta do texto · --jf1..3: fundo (topo, meio, base) */
+body[data-tema=jarvis]{--j:64,156,255; --jb:140,205,255; --jt:227,240,255; --jf1:#0A2257; --jf2:#061641; --jf3:#040E2C;
+  --n-fundo:var(--jf3); --n-painel:rgba(var(--j),.10); --n-tinta:rgb(var(--jt)); --n-suave:rgba(var(--jt),.62);
+  --hud-linha:rgba(var(--jb),.42); --sans-hud:"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif}
+body[data-tema=jarvis][data-cor=carmim]{--j:255,38,88;  --jb:255,150,176; --jt:255,234,240; --jf1:#2E0616; --jf2:#19030C; --jf3:#0B0105}
+body[data-tema=jarvis][data-cor=roxo]  {--j:186,66,255; --jb:226,164,255; --jt:246,234,255; --jf1:#21093D; --jf2:#120424; --jf3:#070111}
+body[data-tema=jarvis][data-cor=verde] {--j:24,236,132; --jb:150,255,204; --jt:230,255,243; --jf1:#04291B; --jf2:#021810; --jf3:#010B07}
+body[data-tema=jarvis][data-cor=laranja]{--j:255,118,18; --jb:255,196,122; --jt:255,242,228; --jf1:#2D1203; --jf2:#190A02; --jf3:#0B0401}
 
-/* ======================= JARVIS HUD (mais próximo do vídeo de referência) ======================= */
-body[data-tema=jarvis]{--hud:#7FD3FF; --hud-forte:#B8E8FF; --hud-linha:rgba(120,200,255,.42); --sans-hud:"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif}
-/* fundo: azul-marinho iluminado no centro, grade de prancheta visível e vinheta nas bordas */
+/* fundo: iluminado no centro, grade de prancheta visível e vinheta nas bordas */
 body[data-tema=jarvis] .tela.nucleo, body[data-tema=jarvis] .briefing{
-  background:radial-gradient(ellipse 85% 80% at 50% 45%, transparent 55%, rgba(1,5,18,.55) 100%),
-             radial-gradient(1150px 780px at 50% 44%, rgba(36,120,255,.42), rgba(20,70,190,.16) 45%, transparent 70%),
-             linear-gradient(180deg,#0A2257 0%,#061641 55%,#040E2C 100%)}
+  background:radial-gradient(ellipse 85% 80% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%),
+             radial-gradient(1150px 780px at 50% 44%, rgba(var(--j),.34), rgba(var(--j),.12) 45%, transparent 70%),
+             linear-gradient(180deg,var(--jf1) 0%,var(--jf2) 55%,var(--jf3) 100%)}
 body[data-tema=jarvis] .tela.nucleo::before, body[data-tema=jarvis] .briefing::before{opacity:1;
-  background-image:linear-gradient(rgba(120,190,255,.13) 1px, transparent 1px), linear-gradient(90deg, rgba(120,190,255,.13) 1px, transparent 1px),
-                   linear-gradient(rgba(120,190,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(120,190,255,.07) 1px, transparent 1px);
+  background-image:linear-gradient(rgba(var(--jb),.13) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--jb),.13) 1px, transparent 1px),
+                   linear-gradient(rgba(var(--jb),.07) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--jb),.07) 1px, transparent 1px);
   background-size:176px 176px,176px 176px,44px 44px,44px 44px;
   -webkit-mask-image:radial-gradient(ellipse 75% 70% at 50% 45%, #000 40%, transparent 100%);mask-image:radial-gradient(ellipse 75% 70% at 50% 45%, #000 40%, transparent 100%)}
 
-/* cartões: vidro azul, borda ciano, brilho e cantoneiras de HUD */
+/* cartões: vidro colorido, borda brilhante e cantoneiras de HUD */
 body[data-tema=jarvis] .b-cartao, body[data-tema=jarvis] .p-foco button, body[data-tema=jarvis] .p-cartao .n-resp{
-  --c:rgba(150,220,255,.95);
+  --c:rgba(var(--jb),.95);
   background:
     linear-gradient(var(--c),var(--c)) top left/14px 2px no-repeat, linear-gradient(var(--c),var(--c)) top left/2px 14px no-repeat,
     linear-gradient(var(--c),var(--c)) top right/14px 2px no-repeat, linear-gradient(var(--c),var(--c)) top right/2px 14px no-repeat,
     linear-gradient(var(--c),var(--c)) bottom left/14px 2px no-repeat, linear-gradient(var(--c),var(--c)) bottom left/2px 14px no-repeat,
     linear-gradient(var(--c),var(--c)) bottom right/14px 2px no-repeat, linear-gradient(var(--c),var(--c)) bottom right/2px 14px no-repeat,
-    linear-gradient(180deg, rgba(34,92,190,.50), rgba(10,36,92,.62));
+    linear-gradient(180deg, rgba(var(--j),.30), rgba(var(--j),.10) 60%, rgba(0,0,0,.35));
   border:1px solid var(--hud-linha);border-radius:6px;
-  box-shadow:inset 0 0 0 1px rgba(140,210,255,.05), inset 0 1px 0 rgba(180,230,255,.14), 0 10px 34px rgba(0,16,70,.5), 0 0 26px rgba(60,160,255,.20);
+  box-shadow:inset 0 1px 0 rgba(var(--jb),.14), 0 10px 34px rgba(0,0,0,.5), 0 0 26px rgba(var(--j),.22);
   -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
 body[data-tema=jarvis] .p-foco button{border-left-width:1px}
-body[data-tema=jarvis] .b-cartao[data-nivel=atencao]{--c:rgba(255,190,110,.95);border-color:rgba(255,180,90,.5)}
-body[data-tema=jarvis] .b-cartao[data-nivel=risco]{--c:rgba(255,120,110,.95);border-color:rgba(255,100,90,.55)}
-body[data-tema=jarvis] .b-cartao .cab{text-transform:uppercase;letter-spacing:.16em;font-size:10.5px;font-weight:600;color:var(--hud);
-  padding-bottom:7px;border-bottom:1px solid rgba(120,200,255,.18);margin-bottom:10px}
-body[data-tema=jarvis] .b-cartao .cab i{background:var(--hud);box-shadow:0 0 10px var(--hud)}
+body[data-tema=jarvis] .b-cartao[data-nivel=atencao]{--c:rgba(255,200,90,.95);border-color:rgba(255,190,80,.55)}
+body[data-tema=jarvis] .b-cartao[data-nivel=risco]{--c:rgba(255,90,80,.95);border-color:rgba(255,80,70,.6)}
+body[data-tema=jarvis] .b-cartao .cab{text-transform:uppercase;letter-spacing:.16em;font-size:10.5px;font-weight:600;color:rgb(var(--jb));
+  padding-bottom:7px;border-bottom:1px solid rgba(var(--jb),.18);margin-bottom:10px}
+body[data-tema=jarvis] .b-cartao .cab i{background:rgb(var(--jb));box-shadow:0 0 10px rgb(var(--j))}
 body[data-tema=jarvis] .b-cartao h4, body[data-tema=jarvis] .p-saudacao, body[data-tema=jarvis] .n-estado, body[data-tema=jarvis] .b-noticia strong{
   font-family:var(--sans-hud);letter-spacing:.005em}
-body[data-tema=jarvis] .b-cartao h4{font-weight:650;color:#EAF6FF}
-body[data-tema=jarvis] .b-cartao li b{color:var(--hud-forte)}
-body[data-tema=jarvis] .b-clima .temp{color:#DFF3FF;text-shadow:0 0 18px rgba(110,200,255,.55);font-family:var(--sans-hud);font-weight:300}
-body[data-tema=jarvis] .b-noticia img{border:1px solid rgba(120,200,255,.3);border-radius:4px}
+body[data-tema=jarvis] .b-cartao h4{font-weight:650;color:rgb(var(--jt))}
+body[data-tema=jarvis] .b-cartao li b{color:rgb(var(--jb))}
+body[data-tema=jarvis] .b-clima .temp{color:rgb(var(--jt));text-shadow:0 0 18px rgba(var(--j),.6);font-family:var(--sans-hud);font-weight:300}
+body[data-tema=jarvis] .b-noticia img{border:1px solid rgba(var(--jb),.3);border-radius:4px}
 
-/* rótulos de estado em caixa alta espaçada, como "FALANDO" no vídeo */
-body[data-tema=jarvis] #b-estado{color:var(--hud-forte);border-color:rgba(120,200,255,.5);background:rgba(10,40,100,.55);
-  letter-spacing:.32em;box-shadow:0 0 18px rgba(80,170,255,.35)}
-body[data-tema=jarvis] .n-estado{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.32em;color:var(--hud-forte);
-  text-shadow:0 0 12px rgba(110,200,255,.6)}
-body[data-tema=jarvis] .n-sub{color:rgba(170,210,245,.7)}
-body[data-tema=jarvis] .p-saudacao{font-weight:300;color:#EAF6FF;text-shadow:0 0 30px rgba(90,170,255,.35)}
-body[data-tema=jarvis] .p-pergunta{color:rgba(170,210,245,.75)}
-body[data-tema=jarvis] .b-legenda{text-shadow:0 2px 14px rgba(0,10,40,.9)}
+/* rótulos de estado em caixa alta espaçada */
+body[data-tema=jarvis] #b-estado{color:rgb(var(--jb));border-color:rgba(var(--jb),.5);background:rgba(var(--j),.16);
+  letter-spacing:.32em;box-shadow:0 0 18px rgba(var(--j),.4)}
+body[data-tema=jarvis] .n-estado{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.32em;color:rgb(var(--jb));
+  text-shadow:0 0 12px rgba(var(--j),.7)}
+body[data-tema=jarvis] .n-sub{color:rgba(var(--jt),.62)}
+body[data-tema=jarvis] .p-saudacao{font-weight:300;color:rgb(var(--jt));text-shadow:0 0 30px rgba(var(--j),.4)}
+body[data-tema=jarvis] .p-pergunta{color:rgba(var(--jt),.7)}
+body[data-tema=jarvis] .b-legenda{text-shadow:0 2px 14px rgba(0,0,0,.9)}
 
-/* barra de comando e botões com brilho ciano */
-body[data-tema=jarvis] .p-barra .n-comando{background:rgba(8,30,76,.72);border-color:var(--hud-linha);
-  box-shadow:0 0 0 1px rgba(140,210,255,.05) inset, 0 0 28px rgba(60,150,255,.22)}
-body[data-tema=jarvis] .n-mic{background:rgba(20,70,160,.35);border-color:var(--hud-linha);color:var(--hud-forte)}
-body[data-tema=jarvis] .n-mic:hover, body[data-tema=jarvis] .n-mic.ligado{box-shadow:0 0 18px rgba(90,180,255,.55)}
+/* barra de comando e botões com brilho */
+body[data-tema=jarvis] .p-barra .n-comando{background:rgba(var(--j),.12);border-color:var(--hud-linha);
+  box-shadow:0 0 28px rgba(var(--j),.22)}
+body[data-tema=jarvis] .p-barra .n-comando input{color:rgb(var(--jt))}
+body[data-tema=jarvis] .n-mic{background:rgba(var(--j),.18);border-color:var(--hud-linha);color:rgb(var(--jb))}
+body[data-tema=jarvis] .n-mic:hover, body[data-tema=jarvis] .n-mic.ligado{box-shadow:0 0 18px rgba(var(--j),.6)}
 body[data-tema=jarvis] .p-icone, body[data-tema=jarvis] .p-abas button, body[data-tema=jarvis] .b-ctrl button{
-  background:rgba(10,36,90,.55);border-color:var(--hud-linha);color:#D6EEFF}
+  background:rgba(var(--j),.14);border-color:var(--hud-linha);color:rgb(var(--jt))}

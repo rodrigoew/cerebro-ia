@@ -172,15 +172,21 @@ async function secAparencia(){
   let tema = e.tema || "ambar";
   const seg = h("div",{class:"segmento",role:"group"});
   const desenhar = () => seg.replaceChildren(...[["ambar","Âmbar (padrão)"],["jarvis","Jarvis (azul)"]].map(([k,r]) =>
-    h("button",{"aria-pressed":String(tema===k), onclick:()=>{ tema = k; desenhar(); aplicarTema(k); }}, r)));
+    h("button",{"aria-pressed":String(tema===k), onclick:()=>{ tema = k; desenhar(); aplicarTema(k, cor); }}, r)));
   desenhar();
+  let cor = e.cor_jarvis || "azul";
+  const segCor = h("div",{class:"segmento",role:"group"});
+  const desenharCor = () => segCor.replaceChildren(...[["carmim","Carmim"],["roxo","Roxo neon"],["verde","Verde neon"],["laranja","Laranja"],["azul","Azul"]].map(([k,r]) =>
+    h("button",{"aria-pressed":String(cor===k), onclick:()=>{ cor = k; desenharCor(); aplicarTema(tema, k); }}, r)));
+  desenharCor();
   const narr = h("input",{type:"checkbox", checked:e.narracao_ia !== false});
   return h("section",{class:"painel aj"}, h("h2",{},"Aparência e narração"),
     h("p",{class:"ajuda"},"O tema Jarvis troca o núcleo por uma esfera de fios de luz azul, como no vídeo de referência. As cores de alerta (atenção, risco, sucesso) continuam valendo."),
     h("label",{class:"rot"},"Tema"), seg,
+    h("label",{class:"rot"},"Cor do Jarvis"), segCor,
     h("label",{style:"display:flex;gap:8px;align-items:center;margin-top:10px"}, narr, "Briefing escrito pela IA (narração natural, no lugar das frases prontas)"),
     h("div",{class:"acoes-aj"}, h("button",{class:"btn primario", onclick:async()=>{
-      try { await api("/api/ajustes",{method:"PUT",body:JSON.stringify({secao:"aparencia", dados:{tema, narracao_ia:narr.checked}})}); avisar("Salvo."); await carregarEstado(); } catch(err){ avisar(err.message); } }},"Salvar")));
+      try { await api("/api/ajustes",{method:"PUT",body:JSON.stringify({secao:"aparencia", dados:{tema, cor_jarvis:cor, narracao_ia:narr.checked}})}); avisar("Salvo."); await carregarEstado(); } catch(err){ avisar(err.message); } }},"Salvar")));
 }
 async function secAtualizacoes(){
   const sec = h("section",{class:"painel aj"}, h("h2",{},"Atualizações"));

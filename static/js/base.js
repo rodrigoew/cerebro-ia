@@ -99,7 +99,7 @@ async function carregarEstado(){
   else if (e.erro) st.textContent = "Última atualização falhou: " + e.erro;
   else if (e.resumo) st.textContent = "Atualizado às " + new Date(e.resumo.gerado_em).toLocaleTimeString("pt-BR",{timeZone:e.fuso,hour:"2-digit",minute:"2-digit"}) + ".";
   else st.textContent = "";
-  if (typeof aplicarTema === "function" && (e.tema || "ambar") !== TEMA) aplicarTema(e.tema);
+  if (typeof aplicarTema === "function" && ((e.tema || "ambar") !== TEMA || (e.cor_jarvis || "azul") !== COR_JARVIS)) aplicarTema(e.tema, e.cor_jarvis || "azul");
   (e.notificacoes || []).forEach(mostrarNotificacao);
   const tmEl = document.getElementById("n-tempo-medio");
   if (tmEl) tmEl.textContent = e.tempo_medio ? `Tempo médio de resposta: ${String(e.tempo_medio.total).replace(".",",")} s (${e.tempo_medio.respostas} respostas). Cérebro: ${({local:"local", claude:"Claude", openai:"nuvem", regras:"regras"})[e.cerebro_modo] || e.cerebro_modo}.` : "";
