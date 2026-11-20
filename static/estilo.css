@@ -738,3 +738,16 @@ body.modo-palco .area{padding:0}
 
 .p-foco button.p-dica{border-left-color:#C08BD0;opacity:.75}
 .p-foco button.p-dica:hover{opacity:1}
+
+/* ======================= TEMA JARVIS (azul) ======================= */
+body[data-tema=jarvis]{--n-fundo:#040915; --n-painel:rgba(10,24,48,.72); --n-tinta:#E3F0FF; --n-suave:#8FA8C8}
+body[data-tema=jarvis] .tela.nucleo{background:radial-gradient(900px 620px at 50% 38%, rgba(40,120,255,.20), transparent 62%),
+  radial-gradient(800px 500px at 90% 95%, rgba(80,60,220,.10), transparent 60%), var(--n-fundo)}
+body[data-tema=jarvis] .tela.nucleo::before{background-image:linear-gradient(rgba(90,160,255,.06) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(90,160,255,.06) 1px, transparent 1px)}
+body[data-tema=jarvis] .briefing{background:radial-gradient(1000px 700px at 50% 40%, rgba(40,120,255,.22), transparent 62%), #030812}
+body[data-tema=jarvis] .p-saudacao, body[data-tema=jarvis] .n-estado{color:#CFE6FF}
+body[data-tema=jarvis] .p-foco button, body[data-tema=jarvis] .p-cartao .n-resp, body[data-tema=jarvis] .b-cartao{background:rgba(8,22,46,.66)}
+body[data-tema=jarvis] .p-barra .n-comando{background:rgba(6,18,40,.82);border-color:rgba(90,160,255,.35)}
+body[data-tema=jarvis] .n-mic{border-color:rgba(90,160,255,.35)}
+body[data-tema=jarvis] .p-icone, body[data-tema=jarvis] .p-abas button{background:rgba(8,22,46,.6)}

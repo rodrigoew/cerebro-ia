@@ -57,6 +57,14 @@ FERRAMENTAS = [
     _f("pessoa", "Tudo sobre a relação com uma pessoa: conversas, combinados, agenda.", {"nome": S}, ["nome"]),
     _f("promessas", "Promessas: o que o usuário prometeu (eu) ou o que prometeram a ele (outros).",
        {"quem": {"type": "string", "enum": ["eu", "outros", "todos"]}, "pessoa": S}),
+    _f("noticias", "Notícias recentes das fontes que o usuário acompanha (tecnologia, segurança, negócios...). Opcional: tema.",
+       {"tema": S}),
+    _f("contas_abertas", "Lista contas a pagar/receber em aberto, com o número (#id) de cada uma, para poder marcá-las como pagas."),
+    _f("marcar_pago", "Marca uma conta do Financeiro como paga, pelo #id de contas_abertas.", {"id": N}, ["id"]),
+    _f("lembretes", "Lista os lembretes em aberto, com o número (#id) de cada um."),
+    _f("concluir_lembrete", "Marca um lembrete como concluído, pelo #id.", {"id": N}, ["id"]),
+    _f("guardar_ideia", "Guarda uma ideia do usuário (vai para Mente > Ideias).", {"ideia": S}, ["ideia"]),
+    _f("mente", "Ideias, decisões e processos que o usuário registrou."),
     _f("ajudar_decidir", "Analisa uma decisão: opções, prós e contras, perguntas.", {"decisao": S}, ["decisao"]),
     _f("organizar_pensamentos", "Separa um texto solto do usuário em tarefas, lembretes, ideias, decisões e notas, e oferece guardar.",
        {"texto": S}, ["texto"]),
@@ -113,7 +121,10 @@ class Agente:
             "necessárias (ex.: listar e-mails, abrir o certo, rascunhar a resposta), sem pedir confirmação do que é óbvio. "
             "Pense antes de responder: cruze agenda, contas, promessas e memória quando isso deixar a resposta mais útil, "
             "e, se notar algo importante relacionado (um vencimento, um conflito de horário), mencione em uma frase. "
-            "Conversa casual se responde de forma casual, sem consultar nada."
+            "Conversa casual se responde de forma casual, sem consultar nada. "
+            "Quando o usuário contar algo duradouro sobre a vida dele (pessoas, preferências, rotinas, projetos, metas), "
+            "guarde com guardar_memoria sem precisar ser pedido. Para fatos atuais do mundo (notícias, preços, cotações, "
+            "resultados, lançamentos), use a pesquisa na web quando ela estiver disponível e diga a fonte em poucas palavras."
             + ("\nO que você já sabe sobre o usuário: " + " | ".join(fixos) if fixos else "")
             + ("\nPanorama de agora: " + self._panorama() if self._panorama() else "")
         )
@@ -193,6 +204,45 @@ class Agente:
             if nome == "ajudar_decidir":
                 d = app.mente.criar_decisao(str(a.get("decisao", "")))
                 return json.dumps({"opcoes": d["opcoes"], "criterios": d["criterios"], "perguntas": d["perguntas"]}, ensure_ascii=False)
+            if nome == "noticias":
+                tema = str(a.get("tema") or "").strip()
+                if tema:
+                    lista = app.memoria.q("""SELECT a.titulo, a.resumo, a.publicado, f.nome fonte FROM artigos a LEFT JOIN fontes f ON f.id = a.fonte_id
+                                             WHERE a.titulo LIKE ? OR a.resumo LIKE ? ORDER BY COALESCE(a.publicado, a.coletado_em) DESC LIMIT 8""",
+                                          (f"%{tema}%", f"%{tema}%"))
+                else:
+                    lista = app.memoria.q("""SELECT a.titulo, a.resumo, a.publicado, f.nome fonte FROM artigos a LEFT JOIN fontes f ON f.id = a.fonte_id
+                                             ORDER BY COALESCE(a.publicado, a.coletado_em) DESC LIMIT 8""")
+                return "\n".join(f"- {x['titulo']} ({x['fonte'] or 'fonte'}, {(x['publicado'] or '')[:10]}): {(x['resumo'] or '')[:220]}"
+                                 for x in lista) or "Nenhuma notícia coletada sobre isso."
+            if nome == "contas_abertas":
+                lista = app.banco.consultar("""SELECT id, tipo, descricao, valor_centavos, vencimento, carteira FROM lancamentos
+                                               WHERE excluido = 0 AND COALESCE(pago_em, '') = '' ORDER BY vencimento IS NULL, vencimento LIMIT 25""")
+                return "\n".join(f"#{x['id']} {'pagar' if x['tipo'] == 'pagar' else 'receber'} | {x['descricao']} | "
+                                 f"R$ {x['valor_centavos'] / 100:.2f} | vence {x['vencimento'] or 'sem data'} | {x['carteira']}" for x in lista) or "Nenhuma conta em aberto."
+            if nome == "marcar_pago":
+                l = app.banco.consultar("SELECT id, descricao FROM lancamentos WHERE id = ?", (int(a.get("id")),))
+                if not l:
+                    return "Conta não encontrada."
+                return self._acao("pagar", {"id": l[0]["id"], "descricao": l[0]["descricao"]}, f"marcar “{l[0]['descricao']}” como paga")
+            if nome == "lembretes":
+                lista = app.memoria.q("SELECT id, texto, data, hora FROM lembretes WHERE feito = 0 ORDER BY data IS NULL, data, hora LIMIT 25")
+                return "\n".join(f"#{x['id']} {x['texto']} | {x['data'] or 'sem data'} {x['hora'] or ''}" for x in lista) or "Nenhum lembrete em aberto."
+            if nome == "concluir_lembrete":
+                l = app.memoria.q("SELECT id, texto FROM lembretes WHERE id = ?", (int(a.get("id")),))
+                if not l:
+                    return "Lembrete não encontrado."
+                return self._acao("concluir_lembrete", {"id": l[0]["id"], "texto": l[0]["texto"]}, f"concluir “{l[0]['texto']}”")
+            if nome == "guardar_ideia":
+                ideia = str(a.get("ideia", "")).strip()
+                return self._acao("nota", {"texto": ideia, "tipo": "ideia"}, f"guardar a ideia “{ideia[:80]}”")
+            if nome == "mente":
+                ideias = [i for i in app.mente.ideias() if i["estado"] not in ("feita", "descartada")][:10]
+                decis = app.mente.decisoes()[:8]
+                procs = app.mente.processos()[:8]
+                return ("Ideias: " + ("; ".join(f"{i['titulo']} ({i['estado']})" for i in ideias) or "nenhuma") +
+                        "\nDecisões: " + ("; ".join(f"{d['pergunta']} → {d['escolha'] or 'em aberto'}" for d in decis) or "nenhuma") +
+                        "\nProcessos: " + ("; ".join(p["nome"] for p in procs) or "nenhum"))
             if nome == "organizar_pensamentos":
                 itens = app.mente.organizar(str(a.get("texto", "")))["itens"]
                 if not itens:
@@ -291,6 +341,8 @@ class Agente:
             r["abrir_globo"] = self.extras["abrir_globo"]
         if self.extras.get("ics"):
             r["ics"] = self.extras["ics"]
+        if self.extras.get("pesquisou"):
+            r["modelo"] += ", pesquisou na web"
         if self.extras.get("pendente"):
             import acoes as _acoes
             p = self.extras["pendente"]
@@ -322,6 +374,8 @@ class Agente:
         import provedores
         chave = provedores.chave("claude")
         ferramentas = [{"name": f["nome"], "description": f["descricao"], "input_schema": f["esquema"]} for f in FERRAMENTAS]
+        if self.app.cfg.get("cerebro", {}).get("web", True):
+            ferramentas.append({"type": "web_search_20250305", "name": "web_search", "max_uses": 3})
         ferramentas[-1]["cache_control"] = {"type": "ephemeral"}
         conversa = [{"role": m["role"], "content": m["content"]} for m in msgs]
         sistema = [{"type": "text", "text": self.sistema()}]
@@ -345,7 +399,7 @@ class Agente:
                     tipo = ev.get("type")
                     if tipo == "content_block_start":
                         b = dict(ev["content_block"])
-                        if b.get("type") == "tool_use":
+                        if b.get("type") in ("tool_use", "server_tool_use"):
                             b["_json"] = ""
                         blocos[ev["index"]] = b
                     elif tipo == "content_block_delta":
@@ -365,6 +419,12 @@ class Agente:
                 elif b.get("type") == "tool_use":
                     conteudo.append({"type": "tool_use", "id": b["id"], "name": b["name"],
                                      "input": json.loads(b.get("_json") or "{}")})
+                elif b.get("type") == "server_tool_use":          # pesquisa na web feita pela Anthropic
+                    conteudo.append({"type": "server_tool_use", "id": b["id"], "name": b["name"],
+                                     "input": json.loads(b.get("_json") or "{}")})
+                    self.extras["pesquisou"] = True
+                elif b.get("type") == "web_search_tool_result":
+                    conteudo.append({k: v for k, v in b.items() if not k.startswith("_")})
             usos = [b for b in conteudo if b["type"] == "tool_use"]
             if not usos:
                 return

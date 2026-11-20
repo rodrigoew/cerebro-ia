@@ -29,6 +29,15 @@ const PALETAS = {
   nuvem:      {anel:[192,139,208], brilho:[228,186,242], miolo:["#F8ECFF","#D6A5EA","#5E2F73"], rotulo:"Consultando a nuvem"},
   aprendendo: {anel:[236,214,150], brilho:[255,240,196], miolo:["#FFFBEF","#F3DE9C","#8C7330"], rotulo:"Aprendendo"},
 };
+const NORMAL_AMBAR = {...PALETAS.normal};
+const NORMAL_JARVIS = {anel:[64,156,255], brilho:[140,205,255], miolo:["#E6F4FF","#7CC4FF","#1A4E9C"], rotulo:"Tudo em ordem"};
+let TEMA = "ambar";
+function aplicarTema(nome){
+  TEMA = nome === "jarvis" ? "jarvis" : "ambar";
+  PALETAS.normal = TEMA === "jarvis" ? NORMAL_JARVIS : NORMAL_AMBAR;
+  document.body.dataset.tema = TEMA;
+  if (typeof definirHumor === "function") definirHumor(humor.atual);
+}
 const humor = {atual:"normal", base:"normal", cor:[217,168,69], brilho:[255,207,110], ondas:[], timer:null};
 function misturar(a, b, k){ return a.map((v,i) => v + (b[i]-v)*k); }
 function rgba(c, a){ return `rgba(${c.map(v=>Math.round(v)).join(",")},${a})`; }
@@ -47,6 +56,39 @@ function definirHumor(nome, duracaoMs){
   if (selo){ selo.dataset.humor = nome; selo.querySelector("span").textContent = p.rotulo; }
 }
 function emitirOnda(nome){ humor.ondas.push({r:100, a:.9, cor:(PALETAS[nome] || PALETAS.normal).brilho.slice()}); }
+
+/* Tema Jarvis: uma esfera de fios de luz que ondulam e giram em 3D, com brilho aditivo. */
+function desenharJarvis(ctx, cx, cy, t, energia, cor, brilho, particulas){
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  const R = 150 + nucleo.nivel * 70;
+  const fios = 9;
+  for (let f = 0; f < fios; f++){
+    const inclina = (f / fios) * Math.PI + t * (.25 + f * .03);          // cada fio é um anel inclinado
+    const achata = Math.cos(t * .6 + f * .9) * .85;                       // gira em torno do eixo: vira elipse
+    ctx.beginPath();
+    for (let k = 0; k <= 160; k++){
+      const a = k / 160 * Math.PI * 2;
+      const onda = 1 + Math.sin(a * 3 + t * 2.2 + f) * (.05 + energia * .09) + Math.sin(a * 5 - t * 1.7 + f * 2) * (.03 + energia * .05);
+      let x = Math.cos(a) * R * onda, y = Math.sin(a) * R * onda * achata;
+      const xr = x * Math.cos(inclina) - y * Math.sin(inclina), yr = x * Math.sin(inclina) + y * Math.cos(inclina);
+      k ? ctx.lineTo(cx + xr, cy + yr) : ctx.moveTo(cx + xr, cy + yr);
+    }
+    ctx.strokeStyle = rgba(f % 3 === 0 ? brilho : cor, .22 + energia * .25);
+    ctx.lineWidth = f % 3 === 0 ? 2.4 : 1.4;
+    ctx.shadowColor = rgba(brilho, .9); ctx.shadowBlur = 14 + energia * 18;
+    ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
+  const miolo = ctx.createRadialGradient(cx, cy, 4, cx, cy, R * .75);
+  miolo.addColorStop(0, rgba(brilho, .28 + energia * .3)); miolo.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = miolo; ctx.beginPath(); ctx.arc(cx, cy, R * .75, 0, Math.PI * 2); ctx.fill();
+  particulas.forEach(q => { q.a += q.v * .003 * (1 + energia * 4); const r = q.r * .95 + Math.sin(t * 2 + q.a * 3) * 8;
+    ctx.fillStyle = rgba(brilho, .25 + energia * .4); ctx.beginPath(); ctx.arc(cx + Math.cos(q.a) * r, cy + Math.sin(q.a) * r * .9, q.s * 1.4, 0, Math.PI * 2); ctx.fill(); });
+  humor.ondas = humor.ondas.filter(o => o.a > .02);
+  humor.ondas.forEach(o => { o.r += 3.2; o.a *= .965; ctx.strokeStyle = rgba(o.cor, o.a * .7); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx, cy, o.r, 0, Math.PI * 2); ctx.stroke(); });
+  ctx.restore();
+}
 
 function animarNucleo(cv){
   const ctx = cv.getContext("2d");
@@ -73,6 +115,10 @@ function animarNucleo(cv){
     humor.ondas = humor.ondas.filter(o => o.a > .02);
     humor.ondas.forEach(o => { o.r += reduzir ? 40 : 3.2; o.a *= .965;
       ctx.strokeStyle = rgba(o.cor, o.a); ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx,cy,o.r,0,Math.PI*2); ctx.stroke(); });
+    if (TEMA === "jarvis"){ desenharJarvis(ctx, cx, cy, t, energia, cor, brilho, particulas);
+      if (!reduzir || nucleo.estado !== "espera" || humor.ondas.length) requestAnimationFrame(quadro);
+      else setTimeout(()=>requestAnimationFrame(quadro), 500);
+      return; }
     // anéis segmentados
     const aneis = [[205,.9,24,1.2],[178,-1.4,60,2.5],[150,.6,8,1.4],[232,-.35,90,.8]];
     aneis.forEach(([r,vel,seg,lw],i) => {

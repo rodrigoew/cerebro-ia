@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.20.0
+- Briefing escrito pela IA: o Claude (ou a IA local) transforma os dados do dia numa narração corrida e natural, mantendo cartões e fatos.
+- Narração sem pausas: todas as vozes do briefing são geradas no começo, em paralelo.
+- Tema "Jarvis" (Ajustes > Aparência): esfera de fios de luz azul que ondula e gira, como no vídeo de referência.
+- Mais conhecimento: pesquisa na web pelo Claude para fatos atuais (notícias, cotações, resultados) e acesso às notícias das suas fontes.
+- Mais ações: marcar contas como pagas, ver e concluir lembretes, guardar ideias, consultar ideias, decisões e processos (com as mesmas permissões de sempre).
+- Memória automática: fatos duradouros que você conta são guardados sem precisar pedir.
+
 ## 0.19.0
 - O agente responde em fluxo de verdade (Claude e IA local): a primeira palavra sai enquanto ele ainda pensa ou consulta ferramentas, e a voz começa na primeira frase.
 - Claude com cache do prompt (respostas mais rápidas a partir da segunda) e modelo automático: Haiku na voz, Sonnet no texto.

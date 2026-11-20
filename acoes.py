@@ -137,6 +137,8 @@ ACOES_NUCLEO = {
     "guardar_itens": ("Guardar tarefas, ideias e decisões organizadas", "baixo"),
     "tarefa": ("Registrar como tarefa o que ainda não sei fazer sozinho", "baixo"),
     "rascunho_email": ("Salvar rascunhos de resposta de e-mail (nunca envia)", "medio"),
+    "pagar": ("Marcar contas como pagas no Financeiro", "medio"),
+    "concluir_lembrete": ("Marcar lembretes como concluídos", "baixo"),
 }
 
 

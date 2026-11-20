@@ -627,6 +627,11 @@ class Aplicativo:
                 cfg["cerebro"]["projetos"] = {a: projetos.get(a, [cerebro.sem_acento(a).split()[0]]) for a in areas}
             if "primeiro_uso" in d:
                 cfg["primeiro_uso"] = bool(d["primeiro_uso"])
+        elif secao == "aparencia":
+            if d.get("tema") in ("ambar", "jarvis"):
+                cfg.setdefault("aparencia", {})["tema"] = d["tema"]
+            if "narracao_ia" in d:
+                cfg.setdefault("briefing", {})["narracao_ia"] = bool(d["narracao_ia"])
         elif secao == "cerebro":
             ce = cfg.setdefault("cerebro", {})
             if d.get("modo") in ("local", "claude", "openai", "regras"):
@@ -878,6 +883,12 @@ class Aplicativo:
                 self.mente.criar_ideia(texto)
                 return {"ok": True, "id": info["id"], "mensagem": "Ideia guardada (também em Mente > Ideias)."}
             return {"ok": True, "id": info["id"], "mensagem": "Anotado na memória."}
+        if tipo == "pagar":
+            self.marcar_pago(int(dados["id"]), False)
+            return {"ok": True, "mensagem": f"Marquei “{dados.get('descricao', 'a conta')}” como paga."}
+        if tipo == "concluir_lembrete":
+            self.memoria.x("UPDATE lembretes SET feito = 1 WHERE id = ?", (int(dados["id"]),))
+            return {"ok": True, "mensagem": f"Lembrete “{dados.get('texto', '')}” concluído."}
         if tipo == "rascunho_email":
             d = dict(dados)
             r = self.email_salvar_rascunho(int(d.pop("email_id")), d)
@@ -1354,6 +1365,8 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                         "sinc": {**app.sinc.cfg, "ultimo": app.sinc.ultimo, "tem_frase": bool(app.sinc.frase())},
                         "vigia": app.vigia.estado(), "globo": app.globo.estado(),
                         "acesso_lan": bool(app.cfg.get("acesso_lan")), "ip_local": _ip_local(),
+                        "tema": app.cfg.get("aparencia", {}).get("tema", "ambar"),
+                        "narracao_ia": app.cfg.get("briefing", {}).get("narracao_ia", True),
                         "cerebro_modo": app.cfg.get("cerebro", {}).get("modo", "local"),
                         "modelo_claude": app.cfg.get("cerebro", {}).get("modelo_claude", "claude-haiku-5-5"),
                         "voz_silencio_ms": app.cfg.get("voz", {}).get("silencio_ms", 600),

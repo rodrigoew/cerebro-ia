@@ -10,6 +10,8 @@ inventar números, datas ou nomes. A única consulta externa é o clima
 """
 from __future__ import annotations
 
+import re
+
 import datetime as dt
 import json
 import time
@@ -299,7 +301,55 @@ def montar_roteiro(app) -> dict:
                       {"tipo": "desde_ontem", "titulo": "Aviso", "itens": [str(erro)[:160]]})
     if not seg:
         falar("Todos os blocos do briefing estão desligados. Ative algum em Ajustes.", None)
+    seg = narracao_natural(app, seg, nome)
     return {"segmentos": seg, "gerado_em": agora.isoformat(), "resumo_de": gerado}
+
+
+def narracao_natural(app, seg: list[dict], nome: str) -> list[dict]:
+    """Reescreve as falas do roteiro como uma narração corrida e humana (uma IA escreve, os dados não mudam).
+    Se não houver IA ou ela falhar, mantém as frases prontas."""
+    if not seg or not app.cfg.get("briefing", {}).get("narracao_ia", True):
+        return seg
+    falas = [s["fala"] for s in seg]
+    pedido = ("Reescreva cada fala abaixo como um trecho de um briefing matinal narrado em voz alta, em português do Brasil, "
+              f"para {nome or 'o usuário'}: natural, caloroso, fluido, com transições entre os assuntos (como um apresentador "
+              "pessoal), frases curtas, sem listas e sem emojis. Mantenha todos os fatos, números e nomes; não invente nada; "
+              "não junte nem divida itens. Responda só com JSON: {\"falas\": [\"...\"]}, com exatamente "
+              f"{len(falas)} itens, na mesma ordem.\n\n" + json.dumps(falas, ensure_ascii=False))
+    texto = None
+    try:
+        import provedores
+        n = app.nucleo
+        if app.cfg.get("cerebro", {}).get("modo") == "claude" and provedores.chave("claude"):
+            texto = _claude_texto(app, pedido)
+        elif n._ia_ok():
+            d = app.llm.json([{"role": "user", "content": pedido}], "Você escreve narrações de briefing.", max_tokens=1600)
+            texto = json.dumps(d, ensure_ascii=False)
+    except Exception:
+        texto = None
+    try:
+        novas = json.loads(re.search(r"\{.*\}", texto or "", re.S).group(0))["falas"]
+    except Exception:
+        return seg
+    if len(novas) != len(seg):
+        return seg
+    for s, f in zip(seg, novas):
+        f = str(f).strip()
+        if len(f) > 8:
+            s["fala"] = f
+    return seg
+
+
+def _claude_texto(app, pedido: str) -> str:
+    import provedores
+    corpo = {"model": app.cfg.get("cerebro", {}).get("modelo_briefing", "claude-sonnet-5-5"), "max_tokens": 2000,
+             "messages": [{"role": "user", "content": pedido}]}
+    req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=json.dumps(corpo).encode(),
+                                 headers={"content-type": "application/json", "x-api-key": provedores.chave("claude"),
+                                          "anthropic-version": "2023-06-01"})
+    with urllib.request.urlopen(req, timeout=40) as r:
+        d = json.loads(r.read())
+    return "".join(b.get("text", "") for b in d.get("content", []) if b.get("type") == "text")
 
 
 def buscar_cidade(nome: str) -> list[dict]:

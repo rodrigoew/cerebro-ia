@@ -30,9 +30,28 @@ function mostrarSegmento(i){
   document.getElementById("b-legenda").textContent = s.fala;
 }
 function esperar(ms){ return new Promise(ok => setTimeout(ok, ms)); }
-async function narrar(texto){
+async function narrar(texto, i){
+  if (temPiper() && bri.audios && bri.audios[i]){
+    const g = fala.geracao; estadoNucleo("falando");
+    try { const buf = await bri.audios[i]; if (g === fala.geracao) await tocar(buf, g); } catch(e){ await falar(texto); }
+    return;
+  }
   if (temPiper() || vozLocal()){ await falar(texto); }
   else { estadoNucleo("falando"); await esperar(Math.max(2600, texto.split(/\s+/).length * 380)); }
+}
+function preparar_audios(){
+  // gera as vozes de todos os trechos já no começo (3 por vez), para a narração fluir sem intervalos
+  bri.audios = new Array(bri.seg.length);
+  let proximo = 0;
+  const trabalhar = async () => {
+    while (proximo < bri.seg.length){
+      const i = proximo++;
+      let ok, falha; bri.audios[i] = new Promise((a, b) => { ok = a; falha = b; });
+      bri.audios[i].catch(()=>{});
+      try { ok(await baixarAudio(bri.seg[i].fala)); } catch(e){ falha(e); }
+    }
+  };
+  for (let k = 0; k < 3; k++) trabalhar();
 }
 async function iniciarBriefing(){
   const caixa = document.getElementById("briefing");
@@ -55,6 +74,7 @@ async function iniciarBriefing(){
       await new Promise(ok => b.onclick = async () => { b.style.display = "none"; try { await fala.ac.resume(); } catch(e){} ok(); });
     }
   }
+  if (temPiper()) preparar_audios();
   tocarBriefing(g);
 }
 async function tocarBriefing(g){
@@ -62,10 +82,10 @@ async function tocarBriefing(g){
   while (bri.idx < bri.seg.length && g === bri.g){
     if (bri.pausado) return;
     mostrarSegmento(bri.idx);
-    await narrar(bri.seg[bri.idx].fala);
+    await narrar(bri.seg[bri.idx].fala, bri.idx);
     if (g !== bri.g || bri.pausado) return;
     bri.idx++;
-    await esperar(350);
+    await esperar(120);
   }
   if (g === bri.g){
     const atual = document.getElementById("b-atual").firstElementChild;
