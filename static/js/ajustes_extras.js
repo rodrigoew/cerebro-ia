@@ -66,7 +66,7 @@ async function secoesExtrasAjustes(){
       h("div",{}),
       h("div",{class:"mostrar"},
         h("button",{class:"btn pequeno", onclick:async()=>{ try { const r = await api("/api/nuvem/freellmapi",{method:"POST",body:"{}"}); avisar(r.mensagem); await carregarEstado(); desenharNuvem(); } catch(err){ avisar(err.message); } }},"Usar FreeLLMAPI"),
-        h("button",{class:"btn pequeno", onclick:async()=>{ try { const r = await api("/api/nuvem/testar",{method:"POST",body:"{}"}); avisar(r.mensagem); } catch(err){ avisar(err.message); } }},"Testar conexão")));
+        h("button",{class:"btn pequeno", onclick:async()=>{ try { const r = await api("/api/nuvem/testar",{method:"POST",body:JSON.stringify({chave:chaveO.value.trim(), url:url.value.trim()})}); avisar(r.mensagem); } catch(err){ avisar(err.message); } }},"Testar conexão")));
     const provAuto = h("select",{},
       h("option",{value:"openai", selected:n.provedor_auto==="openai"},"FreeLLMAPI / compatível com OpenAI (grátis)"),
       h("option",{value:"claude", selected:n.provedor_auto==="claude"},"Claude (usa o crédito da API)"));
@@ -79,8 +79,8 @@ async function secoesExtrasAjustes(){
       h("p",{class:"ajuda", style:"margin-top:6px"},"No automático, a IA local responde tudo que envolve seus e-mails, finanças e notas; perguntas gerais vão ao provedor escolhido. Se ele falhar, a IA local assume sozinha."),
       h("div",{class:"acoes-aj"}, h("button",{class:"btn primario", onclick:async()=>{
         try { await api("/api/nuvem",{method:"POST",body:JSON.stringify({provedor:prov, modelo_claude:modeloC.value, url_openai:url.value, modelo_openai:modeloO.value, rotulo:rotulo.value, politica:politica.value, roteamento:roteamento.value, provedor_auto:provAuto.value})});
-          if (prov === "claude" && chaveC.value) await api("/api/nuvem/chave",{method:"POST",body:JSON.stringify({provedor:"claude", chave:chaveC.value})});
-          if (prov === "openai" && chaveO.value) await api("/api/nuvem/chave",{method:"POST",body:JSON.stringify({provedor:"openai", chave:chaveO.value})});
+          if (chaveC.value.trim()) await api("/api/nuvem/chave",{method:"POST",body:JSON.stringify({provedor:"claude", chave:chaveC.value.trim()})});
+          if (chaveO.value.trim()) await api("/api/nuvem/chave",{method:"POST",body:JSON.stringify({provedor:"openai", chave:chaveO.value.trim()})});
           avisar("Nuvem salva."); desenharNuvem(); } catch(err){ avisar(err.message); } }},"Salvar")));
   }
   async function desenharLicenca(){

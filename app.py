@@ -1801,8 +1801,11 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                     app.salvar_config()
                     self._json(200, {"ok": True})
                 elif url.path == "/api/nuvem/testar":
-                    papel = self._corpo().get("papel", "auto")
-                    self._json(200, provedores.testar(app.cfg, "auto" if papel != "aprofundar" else "aprofundar"))
+                    corpo = self._corpo()
+                    papel = corpo.get("papel", "auto")
+                    self._json(200, provedores.testar(app.cfg, "auto" if papel != "aprofundar" else "aprofundar",
+                                                      chave_teste=str(corpo.get("chave") or "").strip() or None,
+                                                      url_teste=str(corpo.get("url") or "").strip() or None))
                 elif url.path == "/api/nuvem/freellmapi":
                     corpo = self._corpo()
                     fla = app.cfg.setdefault("freellmapi", {})

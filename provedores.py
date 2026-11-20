@@ -143,23 +143,30 @@ def _chamar(req, rotulo: str) -> dict:
         raise RuntimeError(f"Sem conexão com o {rotulo}. A memória local segue funcionando.")
 
 
-def testar(cfg: dict, papel: str = "auto") -> dict:
-    """Confere se o provedor responde."""
+def testar(cfg: dict, papel: str = "auto", chave_teste: str | None = None, url_teste: str | None = None) -> dict:
+    """Confere se o provedor responde. Com chave_teste/url_teste, testa o que está digitado na tela (antes de salvar)."""
     p = ativo(cfg, papel)
-    if p["provedor"] != "openai":
+    if p["provedor"] != "openai" and not chave_teste:
         return {"ok": bool(chave("claude")), "mensagem": "Claude: chave guardada." if chave("claude") else "Claude: falta a chave."}
-    k = chave_openai(cfg)
-    req = urllib.request.Request(p["url"].rstrip("/") + "/models",
-                                 headers={"authorization": f"Bearer {k}"} if k else {})
+    url = url_teste or cfg.get("nuvem", {}).get("url_openai") or p["url"]
+    rotulo = cfg.get("nuvem", {}).get("rotulo") or "Provedor compatível"
+    k = chave_teste or chave_openai({**cfg, "nuvem": {**cfg.get("nuvem", {}), "url_openai": url}})
+    req = urllib.request.Request(url.rstrip("/") + "/models", headers={"authorization": f"Bearer {k}"} if k else {})
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
             dados = json.loads(r.read())
         n = len(dados.get("data", []))
-        return {"ok": True, "mensagem": f"{p['rotulo']} respondeu: {n} modelo(s) disponível(is)."}
+        return {"ok": True, "mensagem": f"{rotulo} respondeu: {n} modelo(s) disponível(is)."
+                + (" Clique em Salvar para guardar a chave." if chave_teste else "")}
     except urllib.error.HTTPError as erro:
-        return {"ok": False, "mensagem": _erro_amigavel(erro.code, "", p["rotulo"])}
+        if erro.code == 401 and not k:
+            return {"ok": False, "mensagem": f"Falta a chave do {rotulo}: cole a chave em “Compatível com OpenAI” e salve."}
+        if erro.code == 401 and k and not k.startswith("freellmapi-") and "3001" in url:
+            return {"ok": False, "mensagem": "Essa não é a chave unificada do FreeLLMAPI (ela começa com “freellmapi-”). "
+                                             "Pegue em localhost:3001 > Chaves > Chave API unificada."}
+        return {"ok": False, "mensagem": _erro_amigavel(erro.code, "", rotulo)}
     except Exception:
-        return {"ok": False, "mensagem": f"{p['rotulo']} não respondeu em {p['url']}."}
+        return {"ok": False, "mensagem": f"{rotulo} não respondeu em {url}."}
 
 
 def enviar_fluxo(cfg: dict, sistema: str, conteudo: str, papel: str = "auto"):
