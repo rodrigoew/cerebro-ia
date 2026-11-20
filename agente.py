@@ -139,7 +139,8 @@ FERRAMENTAS = [
     _f("ver_projeto", "Lista os projetos criados ou mostra os arquivos de um projeto (para continuar, corrigir ou explicar).",
        {"nome": S}),
     _f("consultar_conhecimento", "Pacotes de conhecimento do Núcleo (carros, motos, programação, lógica, Atlético-MG, trânsito de BH, "
-       "day trade, mercado financeiro, renda extra, canais e cortes no TikTok/YouTube, desenvolvimento de apps/sites/jogos, armas "
+       "day trade, mercado financeiro, renda extra, psicologia e psiquiatria, musculação e anabolizantes (redução de danos), "
+       "exames de sangue, gestão de pessoas e de empresas, canais e cortes no TikTok/YouTube, desenvolvimento de apps/sites/jogos, armas "
        "(história, lei e segurança)). Use para perguntas desses temas e combine com o que você já "
        "sabe; para dados do dia (placar, cotação, trânsito agora), pesquise na web.", {"tema": S, "pergunta": S}, ["pergunta"]),
     _f("cotacao", "Cotação ao vivo de moedas (dólar, euro...), criptomoedas (bitcoin, ethereum...) e ações/FIIs da B3 pelo código "
@@ -167,6 +168,17 @@ FERRAMENTAS = [
         "setup": S, "nota": S, "data": S, "custos": N}, ["ativo", "lado", "entrada", "saida"]),
     _f("desempenho_trade", "Estatísticas do diário de trade: acerto, payoff, expectativa, drawdown, resultado por setup e IR estimado.",
        {"dias": N}),
+    _f("registrar_exame", "Guarda os resultados de um exame de sangue do usuário (data AAAA-MM-DD e lista de marcadores com nome, "
+       "valor, unidade e, se o laudo trouxer, ref_min/ref_max) e devolve o resumo comparado às referências e ao exame anterior.",
+       {"data": S, "laboratorio": S, "marcadores": {"type": "array", "items": {"type": "object", "properties": {
+           "nome": S, "valor": N, "unidade": S, "ref_min": N, "ref_max": N}, "required": ["nome", "valor"]}}}, ["marcadores"]),
+    _f("historico_exames", "Mostra o último exame comparado às referências (com setas de tendência) ou a evolução de um marcador "
+       "(ex.: hematócrito, HDL, TGP, testosterona) ao longo do tempo.", {"marcador": S}),
+    _f("financas_empresa", "Finanças de empresa/projeto: vpl (taxa % e fluxos), tir, payback, ponto_equilibrio (custos_fixos, preco, "
+       "custo_variavel), parcela (valor, taxa %, periodos), margem/markup (custo, preco ou margem_desejada %).",
+       {"operacao": {"type": "string", "enum": ["vpl", "tir", "payback", "ponto_equilibrio", "parcela", "margem", "markup"]},
+        "taxa": N, "fluxos": {"type": "array", "items": N}, "custos_fixos": N, "preco": N, "custo_variavel": N, "valor": N,
+        "periodos": N, "custo": N, "margem_desejada": N}, ["operacao"]),
     _f("acao_no_computador", "Faz algo no computador (abrir programa/site/pasta, ver atualizações, informações do sistema etc.).",
        {"pedido": S}, ["pedido"]),
 ]
@@ -503,6 +515,14 @@ class Agente:
                 if nome == "registrar_operacao":
                     return trade.registrar(app, a)
                 return trade.desempenho(app, int(float(a.get("dias") or 30)))
+            if nome in ("registrar_exame", "historico_exames"):
+                import exames
+                if nome == "registrar_exame":
+                    return exames.registrar(app, str(a.get("data") or ""), a.get("marcadores") or [], str(a.get("laboratorio") or ""))
+                return exames.historico(app, str(a.get("marcador") or ""))
+            if nome == "financas_empresa":
+                import financas_empresa
+                return financas_empresa.calcular(str(a.get("operacao") or ""), a)
             if nome == "calcular":
                 return calcular(str(a.get("expressao", "")))
             if nome == "contar_dias":

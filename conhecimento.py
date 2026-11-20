@@ -12,6 +12,9 @@ import unicodedata
 
 PASTA = pathlib.Path(__file__).resolve().parent / "conhecimento"
 _CACHE: dict = {}
+VAZIAS = set("""que com para por uma uns umas como qual quais quem onde quando sobre isso isto esse essa este esta meu minha meus
+minhas seu sua seus suas dos das nos nas pelo pela mais menos muito muita tem ter sao foi ser esta estao fazer faco devo posso
+pode qual vale sim nao voce voces ele ela eles elas aqui ali hoje agora ainda tambem entre ate sem the and""".split())
 
 
 def _norm(t: str) -> str:
@@ -48,7 +51,7 @@ def consultar(tema: str = "", pergunta: str = "", limite: int = 4) -> str:
         return "Nenhum pacote de conhecimento instalado."
     alvo = _norm(tema or "")
     escolhidos = [k for k in dados if alvo and (alvo in _norm(k) or alvo in _norm(dados[k]["titulo"]))] or list(dados)
-    termos = [w for w in re.findall(r"\w{3,}", _norm(f"{tema} {pergunta}"))]
+    termos = [w for w in re.findall(r"\w{3,}", _norm(f"{tema} {pergunta}")) if w not in VAZIAS]
     pontuados = []
     for k in escolhidos:
         for s in dados[k]["secoes"]:
