@@ -179,6 +179,12 @@ FERRAMENTAS = [
        {"operacao": {"type": "string", "enum": ["vpl", "tir", "payback", "ponto_equilibrio", "parcela", "margem", "markup"]},
         "taxa": N, "fluxos": {"type": "array", "items": N}, "custos_fixos": N, "preco": N, "custo_variavel": N, "valor": N,
         "periodos": N, "custo": N, "margem_desejada": N}, ["operacao"]),
+    _f("criar_cortes", "Gera cortes verticais (Shorts/TikTok/Reels) de um vídeo: acha os melhores trechos, recorta em 9:16 com "
+       "legenda embutida e salva em Documentos/Nucleo/Cortes. fonte = caminho de um arquivo de vídeo ou um link. Para cortar trechos "
+       "específicos, passe trechos=[{inicio, fim}] em segundos. Não publica; entrega os arquivos prontos. Use só com vídeo que o "
+       "usuário tem direito de usar (dele, autorizado ou livre).",
+       {"fonte": S, "nome": S, "quantidade": N, "dur_min": N, "dur_max": N, "legendar": {"type": "boolean"},
+        "trechos": {"type": "array", "items": {"type": "object", "properties": {"inicio": N, "fim": N}}}}, ["fonte"]),
     _f("acao_no_computador", "Faz algo no computador (abrir programa/site/pasta, ver atualizações, informações do sistema etc.).",
        {"pedido": S}, ["pedido"]),
 ]
@@ -515,6 +521,11 @@ class Agente:
                 if nome == "registrar_operacao":
                     return trade.registrar(app, a)
                 return trade.desempenho(app, int(float(a.get("dias") or 30)))
+            if nome == "criar_cortes":
+                dur = f"{a.get('dur_min') or 15:g}–{a.get('dur_max') or 60:g}s"
+                qt = "trechos indicados" if a.get("trechos") else f"{int(a.get('quantidade') or 3)} corte(s) de {dur}"
+                return self._acao("cortes", {k: a.get(k) for k in ("fonte", "nome", "quantidade", "dur_min", "dur_max",
+                                   "legendar", "trechos")}, f"gerar {qt} do vídeo {a.get('fonte')}")
             if nome in ("registrar_exame", "historico_exames"):
                 import exames
                 if nome == "registrar_exame":

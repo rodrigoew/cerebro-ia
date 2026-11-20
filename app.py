@@ -921,6 +921,18 @@ class Aplicativo:
         if tipo == "projeto":
             import projetos
             return projetos.criar(self.cfg, dados)
+        if tipo == "cortes":
+            import cortes
+            msg = cortes.criar_cortes(self, dados.get("fonte", ""), dados.get("nome", ""), int(dados.get("quantidade") or 3),
+                                      float(dados.get("dur_min") or 15), float(dados.get("dur_max") or 60),
+                                      dados.get("legendar", True) is not False, dados.get("trechos"))
+            if "Gerei" in msg:
+                try:
+                    import projetos
+                    projetos.abrir_pasta(cortes._pasta(self) / cortes._nome(dados.get("nome") or "cortes"))
+                except Exception:
+                    pass
+            return {"ok": "Gerei" in msg, "mensagem": msg}
         if tipo in ("remarcar", "cancelar_evento"):
             e = self.memoria.q("SELECT * FROM agenda_nucleo WHERE id = ?", (int(dados["id"]),))
             if not e:

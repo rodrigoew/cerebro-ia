@@ -142,6 +142,7 @@ ACOES_NUCLEO = {
     "remarcar": ("Remarcar compromissos da agenda do Núcleo", "baixo"),
     "cancelar_evento": ("Cancelar compromissos da agenda do Núcleo", "medio"),
     "projeto": ("Criar e atualizar projetos de programação (só em Documentos/Nucleo/Projetos)", "medio"),
+    "cortes": ("Gerar cortes verticais de vídeos (baixar link e recortar com legenda)", "medio"),
 }
 
 

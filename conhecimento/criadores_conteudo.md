@@ -27,5 +27,9 @@ Seja honesto: dá para automatizar muito (edição, legenda, publicação), mas 
 - Constância (1 a 3 vídeos por dia em vídeos curtos), testar títulos e capas.
 - Evitar música e imagens sem licença; usar a biblioteca de áudio da plataforma.
 
+## Ferramenta de cortes embutida
+- O Núcleo tem a ação `criar_cortes`: a partir de um arquivo de vídeo (ou um link, se o yt-dlp estiver instalado), ele transcreve, acha os melhores trechos, recorta em vertical 9:16 com legenda embutida e salva em Documentos/Nucleo/Cortes. Ele não publica e não cria contas; entrega os arquivos prontos para você revisar e postar.
+- Direito autoral é automático e independe de aviso na tela: baixar e republicar vídeo de terceiros para monetizar gera reivindicação (Content ID) e derruba o canal. Use a ferramenta com o que é seu, autorizado ou de licença livre.
+
 ## Como o Núcleo pode ajudar
 - Montar roteiros, títulos e descrições; organizar calendário de postagem (lembretes/agenda); fazer contas de receita estimada com `calcular`; criar scripts de automação com `criar_projeto` (ex.: renomear, legendar ou cortar vídeos em lote com ffmpeg/Python).
