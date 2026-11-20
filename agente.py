@@ -139,8 +139,9 @@ FERRAMENTAS = [
     _f("ver_projeto", "Lista os projetos criados ou mostra os arquivos de um projeto (para continuar, corrigir ou explicar).",
        {"nome": S}),
     _f("consultar_conhecimento", "Pacotes de conhecimento do Núcleo (carros, motos, programação, lógica, Atlético-MG, trânsito de BH, "
-       "day trade, mercado financeiro, renda extra, psicologia e psiquiatria, musculação e anabolizantes (redução de danos), "
-       "exames de sangue, gestão de pessoas e de empresas, canais e cortes no TikTok/YouTube, desenvolvimento de apps/sites/jogos, armas "
+       "day trade, mercado financeiro, renda extra, psicologia e psiquiatria, musculação e anabolizantes, exames de sangue, "
+       "gestão, segurança da informação, primeiros socorros, cuidados com cães, paternidade, marketing e vendas, imposto de renda "
+       "e seguros, carreira em tecnologia, inglês, canais e cortes no TikTok/YouTube, desenvolvimento de apps/sites/jogos, armas "
        "(história, lei e segurança)). Use para perguntas desses temas e combine com o que você já "
        "sabe; para dados do dia (placar, cotação, trânsito agora), pesquise na web.", {"tema": S, "pergunta": S}, ["pergunta"]),
     _f("cotacao", "Cotação ao vivo de moedas (dólar, euro...), criptomoedas (bitcoin, ethereum...) e ações/FIIs da B3 pelo código "

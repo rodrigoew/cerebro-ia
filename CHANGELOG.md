@@ -23,6 +23,7 @@
 - Wikipédia integrada (resumo com link da fonte), matemática exata (equações, derivadas, integrais, limites), conversão de unidades e massa molar em química.
 - Day trade com disciplina: plano de risco, dimensionamento de posição (WIN, WDO, IND, DOL e ações), diário de operações com estatísticas (acerto, payoff, expectativa, drawdown, resultado por setup, IR estimado) e aviso para parar quando o limite do dia é atingido. O Núcleo não envia ordens.
 - Novos pacotes: day trade a fundo, renda extra, apps/sites/jogos e armas (história, legislação e segurança).
+- Sete novos pacotes de conhecimento: primeiros socorros, cuidados com cães (e com o Hulk), paternidade e desenvolvimento infantil, marketing/tráfego pago/vendas e negociação, imposto de renda e seguros, carreira em tecnologia e inglês (método de prática conversacional). Total de 24 temas.
 - Cortes automáticos (`criar_cortes`): transcreve um vídeo, acha os melhores trechos e gera Shorts/TikTok/Reels verticais 9:16 com legenda embutida, salvos em Documentos/Nucleo/Cortes. Reaproveita o Whisper da voz; baixa de link com yt-dlp. Não publica.
 - Pacote de segurança da informação: fundamentos, OWASP, metodologia de pentest, ferramentas por categoria, lei brasileira e carreira (sem malware, exploits ou pirataria).
 - Nova dependência: yt-dlp (para baixar de links; o resto funciona com arquivos locais).
