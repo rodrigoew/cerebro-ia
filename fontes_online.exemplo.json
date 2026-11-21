@@ -1,0 +1,67 @@
+{
+  "ativo": true,
+  "busca_por_tema": true,
+  "intervalo_min": 360,
+  "max_downloads_dia": 2,
+  "max_armazenamento_mb": 12000,
+  "fontes": [
+    {
+      "id": "cariani-monitor",
+      "nome": "Renato Cariani",
+      "tema": "maromba",
+      "url": "https://www.youtube.com/@renatocariani/videos",
+      "ativo": true,
+      "channel_id": "",
+      "direitos": "pendente",
+      "comprovante": "",
+      "plataformas": [
+        "youtube",
+        "tiktok"
+      ],
+      "valido_ate": "",
+      "formato_revisado": false,
+      "publicar_automaticamente": false
+    },
+    {
+      "id": "vacacast-rodrigo-goes-203",
+      "nome": "Vaca Cast / Evelyn Regly — Rodrigo Goes #203",
+      "tema": "maromba",
+      "url": "https://www.youtube.com/@evelynregly/videos",
+      "channel_id": "",
+      "ativo": true,
+      "direitos": "autorizado",
+      "comprovante": "https://www.vacacast.com.br/tenha-um-canal-de-cortes",
+      "pagina_episodio": "https://www.vacacast.com.br/fake-natty-com-rodrigo-goes",
+      "videos_permitidos": [
+        "7MY_ZpLqIkw"
+      ],
+      "aguardar_horas": 48,
+      "titulos_episodios": {
+        "7MY_ZpLqIkw": "Rodrigo Goes — Vaca Cast #203"
+      },
+      "plataformas": [
+        "youtube",
+        "tiktok"
+      ],
+      "valido_ate": "",
+      "credito": "Vaca Cast / Evelyn Regly.\nCanal de cortes oficial: https://www.youtube.com/@vacacast\nPerfil oficial do Vaca Cast: https://www.instagram.com/vacacast/",
+      "creditos_obrigatorios": [
+        "https://www.youtube.com/@vacacast",
+        "https://www.instagram.com/vacacast/"
+      ],
+      "regras_editoriais": [
+        "Selecionar trechos próprios do episódio completo; não copiar cortes oficiais",
+        "Criar título, capa e descrição próprios",
+        "Manter contexto e respeito ao convidado; não usar títulos falsos",
+        "Incluir link do episódio e do canal de cortes oficial; mencionar perfil oficial nas outras redes",
+        "Conferir novamente a página de regras antes de liberar a publicação, pois elas podem mudar"
+      ],
+      "formato_revisado": false,
+      "publicar_automaticamente": false,
+      "ia_sintetica": false,
+      "revisao_automatica": true,
+      "regras_verificadas_em": "2026-11-20",
+      "perfil_instagram": "https://www.instagram.com/vacacast/"
+    }
+  ]
+}

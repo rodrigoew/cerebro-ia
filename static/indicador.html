@@ -2,58 +2,46 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<title>Núcleo - widget</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Núcleo — acesso rápido</title>
 <style>
-  :root{--cor:217,168,69;--fundo:16,12,8;--texto:241,231,210;--suave:241,231,210}
-  body[data-tema=jarvis]{--cor:92,200,255;--fundo:6,14,24;--texto:224,244,255}
-  body[data-tema=jarvis][data-cor=carmim]{--cor:255,70,110;--fundo:22,4,10;--texto:255,234,240}
-  body[data-tema=jarvis][data-cor=roxo]{--cor:196,110,255;--fundo:16,5,28;--texto:246,234,255}
-  body[data-tema=jarvis][data-cor=verde]{--cor:40,236,140;--fundo:3,20,13;--texto:230,255,243}
-  body[data-tema=jarvis][data-cor=laranja]{--cor:255,140,40;--fundo:22,10,2;--texto:255,242,228}
-  body[data-tema=jarvis][data-cor=grafite]{--cor:200,206,216;--fundo:16,17,20;--texto:240,242,246}
-  html,body{margin:0;height:100%;background:transparent;overflow:hidden;font:12px/1.25 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;color:rgb(var(--texto));user-select:none}
-  .capsula{position:absolute;inset:3px;display:flex;align-items:center;gap:9px;padding:0 10px 0 4px;border-radius:999px;
-    background:linear-gradient(100deg,rgba(var(--fundo),.9),rgba(var(--fundo),.78));
-    border:1px solid rgba(var(--cor),.30);box-shadow:inset 0 0 0 1px rgba(255,255,255,.03),0 0 14px rgba(var(--cor),.10);
-    cursor:default;transition:border-color .4s,box-shadow .4s,border-radius .3s;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
-  body.grande .capsula{border-radius:22px}
-  .capsula.ativa{border-color:rgba(var(--cor),.55);box-shadow:inset 0 0 0 1px rgba(255,255,255,.04),0 0 18px rgba(var(--cor),.22)}
-  .capsula.risco{animation:pulso 1.6s ease-in-out infinite}
-  .capsula.atencao{border-color:rgba(232,137,58,.6)}
-  @keyframes pulso{0%,100%{border-color:rgba(224,72,62,.45);box-shadow:0 0 6px rgba(224,72,62,.15)}50%{border-color:rgba(224,72,62,.95);box-shadow:0 0 18px rgba(224,72,62,.45)}}
-  #cv{width:36px;height:36px;flex:none}
-  .texto{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:1px}
-  .l1{display:flex;align-items:baseline;gap:7px;white-space:nowrap}
-  .hora{font-size:15px;font-weight:600;letter-spacing:.02em;font-variant-numeric:tabular-nums}
-  .estado{font-size:11px;color:rgba(var(--cor),1);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
-  .l2{font-size:11px;color:rgba(var(--suave),.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .l2 b{color:rgba(var(--texto),.92);font-weight:600}
-  .l2.urgente{color:rgb(240,150,90)}
-  body.grande .l2{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:12px;color:rgba(var(--texto),.9)}
-  #onda{height:22px;width:84px;flex:none;display:none}
-  body.ouvindo #onda{display:block}
-  .botoes{display:flex;gap:4px;flex:none;width:0;overflow:hidden;opacity:0;transition:width .25s,opacity .2s}
-  .capsula:hover .botoes{width:86px;opacity:1}
-  .botoes button{all:unset;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
-    background:rgba(var(--cor),.10);border:1px solid rgba(var(--cor),.25);color:rgb(var(--cor))}
-  .botoes button:hover{background:rgba(var(--cor),.24)}
-  .botoes button.ligado{background:rgba(var(--cor),.85);color:rgb(var(--fundo))}
-  .botoes svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-  .arrasto{cursor:grab}
+:root{--cor:217,168,69;--fundo:16,12,8;--texto:241,231,210}
+body[data-tema=jarvis]{--cor:92,200,255;--fundo:6,14,24;--texto:224,244,255}
+body[data-tema=jarvis][data-cor=carmim]{--cor:255,70,110;--fundo:22,4,10;--texto:255,234,240}
+body[data-tema=jarvis][data-cor=roxo]{--cor:196,110,255;--fundo:16,5,28;--texto:246,234,255}
+body[data-tema=jarvis][data-cor=verde]{--cor:40,236,140;--fundo:3,20,13;--texto:230,255,243}
+body[data-tema=jarvis][data-cor=laranja]{--cor:255,140,40;--fundo:22,10,2;--texto:255,242,228}
+body[data-tema=jarvis][data-cor=grafite]{--cor:200,206,216;--fundo:16,17,20;--texto:240,242,246}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;color:rgb(var(--texto));font:12px/1.2 "Segoe UI",system-ui,sans-serif;user-select:none}
+.capsula{position:absolute;inset:2px;display:flex;align-items:center;gap:6px;padding:0 5px 0 9px;border-radius:12px;background:rgba(var(--fundo),.96);border:1px solid rgba(var(--cor),.32)}
+.identidade{display:flex;align-items:center;gap:7px;flex:1;min-width:0;height:100%;cursor:grab}
+.identidade:active{cursor:grabbing}
+.ponto{width:7px;height:7px;flex:none;border-radius:50%;background:rgb(var(--cor));opacity:.85}
+.estado{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:600}
+.botoes{display:flex;align-items:center;gap:3px;flex:none}
+button{display:grid;place-items:center;width:27px;height:27px;padding:0;border:0;border-radius:8px;background:transparent;color:rgb(var(--texto));cursor:pointer}
+button:hover{background:rgba(var(--cor),.16)}
+button:focus-visible{outline:2px solid rgb(var(--cor));outline-offset:-2px}
+button[aria-pressed=true]{color:rgb(var(--cor));background:rgba(var(--cor),.14)}
+button svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+body[data-alerta=atencao] .ponto{background:#ffb454}
+body[data-alerta=risco] .ponto{background:#ff6464}
+body[data-offline=true] .ponto{background:#93989f}
+body[data-estado=ouvindo] .ponto,body[data-estado=conversa] .ponto{animation:escuta 1.4s ease-in-out infinite}
+@keyframes escuta{50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.ponto{animation:none!important}}
 </style>
 </head>
 <body>
-<div class="capsula" id="capsula" title="Dois cliques abrem o Núcleo · arraste para mover">
-  <canvas id="cv" width="72" height="72" aria-hidden="true"></canvas>
-  <div class="texto">
-    <div class="l1"><span class="hora" id="hora">--:--</span><span class="estado" id="estado"></span></div>
-    <div class="l2" id="l2">Tudo tranquilo</div>
+<div class="capsula" id="capsula" title="Arraste para mover. Abra o Núcleo para ver os detalhes.">
+  <div class="identidade" id="identidade">
+    <span class="ponto" aria-hidden="true"></span>
+    <span class="estado" id="estado" role="status" aria-live="polite">Iniciando</span>
   </div>
-  <canvas id="onda" width="168" height="44" aria-hidden="true"></canvas>
   <div class="botoes">
-    <button id="b-falar" title="Conversar (liga/desliga o microfone)"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
-    <button id="b-briefing" title="Briefing do dia"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
-    <button id="b-abrir" title="Abrir o Núcleo"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></button>
+    <button id="b-falar" type="button" title="Ativar ou desativar conversa" aria-label="Ativar ou desativar conversa" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    <button id="b-abrir" type="button" title="Abrir a aplicação Núcleo" aria-label="Abrir a aplicação Núcleo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></button>
   </div>
 </div>
 <script src="/static/js/indicador.js"></script>

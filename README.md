@@ -3,6 +3,9 @@
 Segundo cérebro local: IA no seu computador, voz, e-mails, agenda, finanças, decisões e processos.
 O guia completo de uso está em [LEIAME.md](LEIAME.md).
 
+A esteira de produção para YouTube e TikTok está documentada em [documentos/CRIADOR.md](documentos/CRIADOR.md).
+Ela acrescenta fila persistente, seleção de trechos, perfis de edição, agendamento via Buffer e acompanhamento de resultados.
+
 ## Estrutura do repositório
 
 ```

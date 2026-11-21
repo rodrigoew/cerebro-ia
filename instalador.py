@@ -66,6 +66,8 @@ class Instalador:
             "whisper": voz.tem_whisper(),
             "piper": voz.tem_piper(),
             "kokoro": voz.tem_kokoro(),
+            "ffmpeg": self._tem("imageio_ffmpeg") or bool(shutil.which("ffmpeg")),
+            "yt_dlp": self._tem("yt_dlp"),
         }
 
     def iniciar(self) -> bool:
@@ -211,7 +213,9 @@ class Instalador:
         return True
 
     def _pacotes(self) -> None:
-        self.registrar("Passo 1 de 5: pacotes de voz.")
+        self.registrar("Passo 1 de 5: pacotes de voz e edição.")
+        if not getattr(sys, "frozen", False):
+            self._pip(["imageio-ffmpeg>=0.5", "yt-dlp[default]>=2026.10.26", "sympy>=1.12", "cloudinary>=1.44"])
         if getattr(sys, "frozen", False):
             self.registrar("Versão instalada: os pacotes já vêm incluídos.")
             return

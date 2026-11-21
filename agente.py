@@ -186,6 +186,8 @@ FERRAMENTAS = [
        "usuário tem direito de usar (dele, autorizado ou livre).",
        {"fonte": S, "nome": S, "quantidade": N, "dur_min": N, "dur_max": N, "legendar": {"type": "boolean"},
         "trechos": {"type": "array", "items": {"type": "object", "properties": {"inicio": N, "fim": N}}}}, ["fonte"]),
+    _f("estado_criador", "Consulta a fila real de cortes, agendamentos, publicações e erros de YouTube/TikTok. Nunca afirme que publicou sem confirmação desta ferramenta."),
+    _f("analisar_temas", "Mostra títulos observados em canais monitorados e desempenho próprio por tema. A amostra não é volume de busca. Não promete viralização."),
     _f("acao_no_computador", "Faz algo no computador (abrir programa/site/pasta, ver atualizações, informações do sistema etc.).",
        {"pedido": S}, ["pedido"]),
 ]
@@ -544,6 +546,10 @@ class Agente:
                        (". É hoje." if d == 0 else f". Faltam {d} dia(s)." if d > 0 else f". Foi há {-d} dia(s).")
             if nome == "controlar_midia":
                 return controlar_midia(str(a.get("acao", "")), int(float(a.get("vezes") or 1)))
+            if nome == "estado_criador":
+                return json.dumps(app.criador.status(), ensure_ascii=False)
+            if nome == "analisar_temas":
+                return json.dumps(app.criador.analise(), ensure_ascii=False)
             if nome == "acao_no_computador":
                 r = n._acao_por_regras(str(a.get("pedido", "")), __import__("cerebro").sem_acento(str(a.get("pedido", ""))))
                 if r is None:
@@ -573,7 +579,7 @@ class Agente:
             x = self.app.executar_acao_nucleo(tipo, dados)
             if x.get("ics"):
                 self.extras["ics"] = x["ics"]
-            return f"Feito: {x['mensagem']}"
+            return ("Feito: " if x.get("ok", True) else "Falhou: ") + x["mensagem"]
         self.n.pendente = {"tipo": tipo, "dados": dados, "criado": time.time()}
         self.extras["pendente"] = {"tipo": tipo, "dados": dados}
         return (f"PRECISA DE PERMISSÃO: ainda não foi feito. Pergunte ao usuário, em uma frase, se pode fazer: {descricao}. "

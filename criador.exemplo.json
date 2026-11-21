@@ -1,0 +1,35 @@
+{
+  "ativo": false,
+  "publicar": false,
+  "fuso": "America/Sao_Paulo",
+  "intervalo_seg": 60,
+  "descoberta_min": 30,
+  "metricas_min": 360,
+  "max_fontes_pendentes": 12,
+  "max_cortes_por_video": 2,
+  "max_uploads_dia": 8,
+  "max_upload_mb": 150,
+  "max_hospedagem_mb_dia": 600,
+  "min_espaco_livre_mb": 5000,
+  "max_duracao_fonte_min": 120,
+  "selecao_semantica": true,
+  "temas": [
+    {
+      "id": "maromba",
+      "palavras": ["musculação", "fisiculturismo", "treino", "Renato Cariani", "Julio Balestrin", "competição"],
+      "feeds": []
+    },
+    {
+      "id": "games",
+      "palavras": ["Bistecone", "Coringa", "Gabepeixe", "Paulinho o Loko", "gameplay", "desafio"],
+      "feeds": []
+    }
+  ],
+  "fontes": [],
+  "canais": [
+    {"id":"youtube-maromba", "plataforma":"youtube", "tema":"maromba", "buffer_channel_id":"", "categoria":"17", "horarios":["12:00","19:00"], "limite_dia":2, "dur_min":25, "dur_max":60, "infantil":false, "ia_sintetica":false},
+    {"id":"tiktok-maromba", "plataforma":"tiktok", "tema":"maromba", "buffer_channel_id":"", "horarios":["12:30","19:30"], "limite_dia":2, "dur_min":65, "dur_max":90, "ia_sintetica":false},
+    {"id":"youtube-games", "plataforma":"youtube", "tema":"games", "buffer_channel_id":"", "categoria":"20", "horarios":["13:00","20:00"], "limite_dia":2, "dur_min":25, "dur_max":60, "infantil":false, "ia_sintetica":false},
+    {"id":"tiktok-games", "plataforma":"tiktok", "tema":"games", "buffer_channel_id":"", "horarios":["13:30","20:30"], "limite_dia":2, "dur_min":65, "dur_max":90, "ia_sintetica":false}
+  ]
+}

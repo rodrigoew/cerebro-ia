@@ -1,0 +1,407 @@
+{
+  "ativo": true,
+  "busca_por_tema": true,
+  "intervalo_min": 360,
+  "max_downloads_dia": 4,
+  "max_armazenamento_mb": 12000,
+  "fontes": [
+    {
+      "id": "cariani-monitor",
+      "nome": "Renato Cariani",
+      "tema": "maromba",
+      "url": "https://www.youtube.com/@renatocariani/videos",
+      "ativo": true,
+      "channel_id": "",
+      "direitos": "pendente",
+      "comprovante": "",
+      "plataformas": [
+        "youtube",
+        "tiktok"
+      ],
+      "valido_ate": "",
+      "formato_revisado": false,
+      "publicar_automaticamente": false
+    },
+    {
+      "id": "vacacast-rodrigo-goes-203",
+      "nome": "Vaca Cast / Evelyn Regly — Rodrigo Goes #203",
+      "tema": "maromba",
+      "url": "https://www.youtube.com/@evelynregly/videos",
+      "channel_id": "",
+      "ativo": true,
+      "direitos": "autorizado",
+      "comprovante": "https://www.vacacast.com.br/tenha-um-canal-de-cortes",
+      "pagina_episodio": "https://www.vacacast.com.br/fake-natty-com-rodrigo-goes",
+      "videos_permitidos": [
+        "7MY_ZpLqIkw"
+      ],
+      "aguardar_horas": 48,
+      "titulos_episodios": {
+        "7MY_ZpLqIkw": "Rodrigo Goes — Vaca Cast #203"
+      },
+      "plataformas": [
+        "youtube",
+        "tiktok"
+      ],
+      "valido_ate": "",
+      "credito": "Vaca Cast / Evelyn Regly.\nCanal de cortes oficial: https://www.youtube.com/@vacacast\nPerfil oficial do Vaca Cast: https://www.instagram.com/vacacast/",
+      "creditos_obrigatorios": [
+        "https://www.youtube.com/@vacacast",
+        "https://www.instagram.com/vacacast/"
+      ],
+      "regras_editoriais": [
+        "Selecionar trechos próprios do episódio completo; não copiar cortes oficiais",
+        "Criar título, capa e descrição próprios",
+        "Manter contexto e respeito ao convidado; não usar títulos falsos",
+        "Incluir link do episódio e do canal de cortes oficial; mencionar perfil oficial nas outras redes",
+        "Conferir novamente a página de regras antes de liberar a publicação, pois elas podem mudar"
+      ],
+      "formato_revisado": false,
+      "publicar_automaticamente": false,
+      "ia_sintetica": false,
+      "revisao_automatica": true,
+      "regras_verificadas_em": "2026-11-20",
+      "perfil_instagram": "https://www.instagram.com/vacacast/"
+    },
+    {
+      "id": "vacacast-maromba-serie",
+      "nome": "Vaca Cast — episódios de treino e nutrição",
+      "tema": "maromba",
+      "url": "https://www.youtube.com/@evelynregly/videos",
+      "channel_id": "",
+      "ativo": true,
+      "direitos": "autorizado",
+      "comprovante": "https://www.vacacast.com.br/tenha-um-canal-de-cortes",
+      "aguardar_horas": 48,
+      "plataformas": [
+        "youtube",
+        "tiktok"
+      ],
+      "valido_ate": "",
+      "credito": "Vaca Cast / Evelyn Regly.\nCanal de cortes oficial: https://www.youtube.com/@vacacast\nPerfil oficial do Vaca Cast: https://www.instagram.com/vacacast/",
+      "creditos_obrigatorios": [
+        "https://www.youtube.com/@vacacast",
+        "https://www.instagram.com/vacacast/"
+      ],
+      "regras_editoriais": [
+        "Selecionar trechos próprios do episódio completo; não copiar cortes oficiais",
+        "Criar título, capa e descrição próprios",
+        "Manter contexto e respeito ao convidado; não usar títulos falsos",
+        "Incluir link do episódio e do canal de cortes oficial; mencionar perfil oficial nas outras redes",
+        "Conferir novamente a página de regras antes de liberar a publicação, pois elas podem mudar"
+      ],
+      "formato_revisado": false,
+      "publicar_automaticamente": false,
+      "ia_sintetica": false,
+      "revisao_automatica": true,
+      "regras_verificadas_em": "2026-11-20",
+      "perfil_instagram": "https://www.instagram.com/vacacast/",
+      "uploader_id": "@evelynregly",
+      "serie": [
+        "vaca cast",
+        "vacacast"
+      ],
+      "palavras_tema": [
+        "musculação",
+        "fisiculturismo",
+        "treino",
+        "nutricionista",
+        "emagreceu",
+        "nutrição",
+        "rodrigo goes",
+        "balestrin",
+        "muzy",
+        "cariani",
+        "ramon dino"
+      ],
+      "excluir_titulos": [
+        "cortes",
+        "shorts"
+      ],
+      "videos_excluidos": [
+        "7MY_ZpLqIkw"
+      ],
+      "duracao_min_seg": 600,
+      "consultas": [
+        "\"Vaca Cast\" \"nutricionista\" \"Evelyn Regly\"",
+        "\"Vaca Cast\" \"treino\" \"Evelyn Regly\"",
+        "\"Vaca Cast\" \"emagreceu\" \"Evelyn Regly\""
+      ],
+      "publicacao_catalogo": true
+    },
+    {
+      "id": "gaules-cs-arquivo",
+      "nome": "Gaules — gameplays arquivadas de CS",
+      "tema": "games",
+      "url": "https://www.youtube.com/@gaules/videos",
+      "channel_id": "",
+      "ativo": true,
+      "direitos": "autorizado",
+      "comprovante": "https://www.youtube.com/watch?v=cfaCODAGmmE",
+      "videos_permitidos": [
+        "cfaCODAGmmE",
+        "uvXK_xE0aQc"
+      ],
+      "titulos_episodios": {
+        "cfaCODAGmmE": "QUANDO GAULES RESOLVE JOGAR CS IGUAL PROFISSIONAL!",
+        "uvXK_xE0aQc": "AS MELHORES OPERADAS NO CS QUE O GAULES TRANSMITIU"
+      },
+      "aguardar_horas": 48,
+      "plataformas": [
+        "youtube"
+      ],
+      "valido_ate": "",
+      "credito": "Origem: Gaules. Canal oficial: https://www.youtube.com/@gaules\nCortes oficiais: https://www.youtube.com/@cortesdogaulesoficial\nSeleção e edição independentes; sem vínculo oficial.",
+      "creditos_obrigatorios": [
+        "https://www.youtube.com/@gaules"
+      ],
+      "regras_editoriais": [
+        "Gerar trecho, título e capa próprios; não republicar o vídeo inteiro",
+        "Preservar contexto e atribuir o conteúdo ao Gaules",
+        "Não incluir anúncios, cupons e patrocínios antigos na chamada editorial",
+        "A regra oficial exige 24 horas após a VOD original terminar; estes dois arquivos são históricos de 2023/2024, não transmissões em andamento",
+        "Este cadastro não autoriza outros vídeos, torneios ou criadores; verificar regras antes de ampliar o escopo"
+      ],
+      "fundamentacao": "Permissão expressa nas descrições oficiais. Seleção histórica de setembro/2023 e julho/2024; encerramento da transmissão original inferido da antiguidade, sem alegar consulta ao provedor da VOD.",
+      "formato_revisado": false,
+      "publicar_automaticamente": false,
+      "ia_sintetica": false,
+      "revisao_automatica": true,
+      "publicacao_catalogo": true,
+      "regras_verificadas_em": "2026-11-20"
+    },
+    {
+      "id": "balestrin-monitor",
+      "nome": "Julio Balestrin",
+      "tema": "maromba",
+      "url": "",
+      "consultas": [
+        "Julio Balestrin treino podcast"
+      ],
+      "ativo": true,
+      "channel_id": "",
+      "direitos": "pendente",
+      "comprovante": "",
+      "plataformas": [
+        "youtube",
+        "tiktok"
+      ],
+      "formato_revisado": false,
+      "publicar_automaticamente": false,
+      "pendencia": "Monitoramento por consulta; confirmar origem e permissão antes de baixar/publicar."
+    },
+    {
+      "id": "muzy-monitor",
+      "nome": "Paulo Muzy",
+      "tema": "maromba",
+      "url": "",
+      "consultas": [
+        "Paulo Muzy treino podcast"
+      ],
+      "ativo": true,
+      "channel_id": "",
+      "direitos": "pendente",
+      "comprovante": "",
+      "plataformas": [
+        "youtube",
+        "tiktok"
+      ],
+      "formato_revisado": false,
+      "publicar_automaticamente": false,
+      "pendencia": "Monitoramento por consulta; confirmar origem e permissão antes de baixar/publicar."
+    },
+    {
+      "id": "twin-monitor",
+      "nome": "Leandro Twin",
+      "tema": "maromba",
+      "url": "",
+      "consultas": [
+        "Leandro Twin treino musculação"
+      ],
+      "ativo": true,
+      "channel_id": "",
+      "direitos": "pendente",
+      "comprovante": "",
+      "plataformas": [
+        "youtube",
+        "tiktok"
+      ],
+      "formato_revisado": false,
+      "publicar_automaticamente": false,
+      "pendencia": "Monitoramento por consulta; confirmar origem e permissão antes de baixar/publicar."
+    },
+    {
+      "id": "ramon-monitor",
+      "nome": "Ramon Dino / CBum",
+      "tema": "maromba",
+      "url": "",
+      "consultas": [
+        "Ramon Dino CBum fisiculturismo"
+      ],
+      "ativo": true,
+      "channel_id": "",
+      "direitos": "pendente",
+      "comprovante": "",
+      "plataformas": [
+        "youtube",
+        "tiktok"
+      ],
+      "formato_revisado": false,
+      "publicar_automaticamente": false,
+      "pendencia": "Monitoramento por consulta; confirmar origem e permissão antes de baixar/publicar."
+    },
+    {
+      "id": "bistecone-monitor",
+      "nome": "Bistecone",
+      "tema": "games",
+      "url": "",
+      "consultas": [
+        "Bistecone gameplay"
+      ],
+      "ativo": true,
+      "channel_id": "",
+      "direitos": "pendente",
+      "comprovante": "",
+      "plataformas": [
+        "youtube",
+        "tiktok"
+      ],
+      "formato_revisado": false,
+      "publicar_automaticamente": false,
+      "pendencia": "Monitoramento por consulta; confirmar origem e permissão antes de baixar/publicar."
+    },
+    {
+      "id": "coringa-monitor",
+      "nome": "LOUD Coringa",
+      "tema": "games",
+      "url": "",
+      "consultas": [
+        "LOUD Coringa gameplay"
+      ],
+      "ativo": true,
+      "channel_id": "",
+      "direitos": "pendente",
+      "comprovante": "",
+      "plataformas": [
+        "youtube",
+        "tiktok"
+      ],
+      "formato_revisado": false,
+      "publicar_automaticamente": false,
+      "pendencia": "Monitoramento por consulta; confirmar origem e permissão antes de baixar/publicar."
+    },
+    {
+      "id": "gabepeixe-monitor",
+      "nome": "Gabepeixe",
+      "tema": "games",
+      "url": "",
+      "consultas": [
+        "Gabepeixe gameplay"
+      ],
+      "ativo": true,
+      "channel_id": "",
+      "direitos": "pendente",
+      "comprovante": "",
+      "plataformas": [
+        "youtube",
+        "tiktok"
+      ],
+      "formato_revisado": false,
+      "publicar_automaticamente": false,
+      "pendencia": "Monitoramento por consulta; confirmar origem e permissão antes de baixar/publicar."
+    },
+    {
+      "id": "paulinho-monitor",
+      "nome": "Paulinho o Loko",
+      "tema": "games",
+      "url": "",
+      "consultas": [
+        "Paulinho o Loko GTA RP"
+      ],
+      "ativo": true,
+      "channel_id": "",
+      "direitos": "pendente",
+      "comprovante": "",
+      "plataformas": [
+        "youtube",
+        "tiktok"
+      ],
+      "formato_revisado": false,
+      "publicar_automaticamente": false,
+      "pendencia": "Monitoramento por consulta; confirmar origem e permissão antes de baixar/publicar."
+    },
+    {
+      "id": "alanzoka-monitor",
+      "nome": "Alanzoka / Cellbit",
+      "tema": "games",
+      "url": "",
+      "consultas": [
+        "Alanzoka Cellbit gameplay"
+      ],
+      "ativo": true,
+      "channel_id": "",
+      "direitos": "pendente",
+      "comprovante": "",
+      "plataformas": [
+        "youtube",
+        "tiktok"
+      ],
+      "formato_revisado": false,
+      "publicar_automaticamente": false,
+      "pendencia": "Monitoramento por consulta; confirmar origem e permissão antes de baixar/publicar."
+    }
+  ],
+  "revisao": "catalogo-autonomia-2026-11-20",
+  "max_buscas_ciclo": 4,
+  "buscas": {
+    "maromba": [
+      "podcast musculação fisiculturismo",
+      "entrevista treino bodybuilding",
+      "Renato Cariani Julio Balestrin podcast treino",
+      "Paulo Muzy Leandro Twin treino musculação",
+      "Ramon Dino CBum competição fisiculturismo",
+      "nutrição esportiva treino recuperação podcast",
+      "Rodrigo Goes natural musculação"
+    ],
+    "games": [
+      "live melhores momentos gameplay",
+      "streamer gameplay entrevista",
+      "Bistecone melhores momentos gameplay",
+      "LOUD Coringa gameplay entrevista",
+      "Gabepeixe gameplay desafio",
+      "Paulinho o Loko GTA RP",
+      "Gaules CS gameplay",
+      "Alanzoka Cellbit jogos gameplay",
+      "Baiano Yoda esports entrevista",
+      "GTA 6 GTA VI gameplay sem spoilers",
+      "GTA VI dicas iniciantes exploração",
+      "GTA 6 novidades mecânicas comparação GTA V"
+    ]
+  },
+  "rotina": {
+    "ativo": true,
+    "intervalo_min": 30,
+    "reposicao_min": 60,
+    "min_posts_canal": 2,
+    "pautas": [
+      {
+        "tema": "games",
+        "consulta": "GTA 6 GTA VI dicas iniciantes sem spoilers gameplay",
+        "inicio": "2026-11-19",
+        "fim": "2026-12-20"
+      },
+      {
+        "tema": "games",
+        "consulta": "GTA VI novidades mecânicas exploração Vice City gameplay",
+        "inicio": "2026-11-19",
+        "fim": "2026-12-20"
+      },
+      {
+        "tema": "games",
+        "consulta": "GTA 6 primeiras impressões streamer sem spoilers",
+        "inicio": "2026-11-19",
+        "fim": "2026-12-20"
+      }
+    ]
+  }
+}

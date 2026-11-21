@@ -53,6 +53,7 @@ from globo import Globo
 import atualizador
 import coletor as c
 from acoes import Acoes
+from criador import Criador
 from aprendizado import Aprendizado
 from llm_local import LLMLocal
 from instalador import Instalador
@@ -201,6 +202,7 @@ class Aplicativo:
         self.rotina = {"ultima_volta": None, "coletando": False, "consolidando": False, "ultimo_erro": None}
         self.instalador = Instalador(self)
         self.acoes = Acoes(self)
+        self.criador = Criador(self)
 
     def vocabulario(self) -> list[str]:
         extras = [cerebro.nome_assistente(self.cfg), self.cfg.get("nome", "")] + self.carteiras() + [x.get("apelido", "") for x in self.cfg.get("contas", [])]
@@ -747,6 +749,7 @@ class Aplicativo:
 
     # ------------------------------------------------------------ rotinas em segundo plano
     def iniciar_rotinas(self) -> None:
+        self.criador.iniciar()
         threading.Thread(target=self._rotinas, daemon=True).start()
 
     def _rotinas(self) -> None:
@@ -761,6 +764,7 @@ class Aplicativo:
             time.sleep(60)
 
     def rodar_rotinas(self, forcar_fontes: bool = False) -> None:
+        self.criador.iniciar()
         agora = self.agora()
         ap = self.aprendizado
         # 1. vetores do que entrou na memória (lotes pequenos, roda na GPU)
@@ -923,16 +927,18 @@ class Aplicativo:
             return projetos.criar(self.cfg, dados)
         if tipo == "cortes":
             import cortes
-            msg = cortes.criar_cortes(self, dados.get("fonte", ""), dados.get("nome", ""), int(dados.get("quantidade") or 3),
+            resultado = cortes.produzir(self, dados.get("fonte", ""), dados.get("nome", ""), int(dados.get("quantidade") or 3),
                                       float(dados.get("dur_min") or 15), float(dados.get("dur_max") or 60),
                                       dados.get("legendar", True) is not False, dados.get("trechos"))
-            if "Gerei" in msg:
+            msg = (f"Gerei {len(resultado['arquivos'])} corte(s). " if resultado["ok"] else "Não gerei cortes. ")
+            msg += str(resultado.get("pasta") or "") + " ".join(resultado["erros"])
+            if resultado["ok"]:
                 try:
                     import projetos
                     projetos.abrir_pasta(cortes._pasta(self) / cortes._nome(dados.get("nome") or "cortes"))
                 except Exception:
                     pass
-            return {"ok": "Gerei" in msg, "mensagem": msg}
+            return {"ok": resultado["ok"], "mensagem": msg, "arquivos": resultado["arquivos"]}
         if tipo in ("remarcar", "cancelar_evento"):
             e = self.memoria.q("SELECT * FROM agenda_nucleo WHERE id = ?", (int(dados["id"]),))
             if not e:
@@ -1412,6 +1418,10 @@ def criar_handler(app: Aplicativo, token: str, porta: int):
                     self.send_header("Content-Length", str(len(corpo)))
                     self.end_headers()
                     self.wfile.write(corpo)
+                elif url.path == "/api/criador":
+                    self._json(200, app.criador.status())
+                elif url.path == "/api/criador/temas":
+                    self._json(200, {"temas": app.criador.analise()})
                 elif url.path == "/api/ping":
                     self._json(200, {"app": "resumo-da-manha"})
                 elif url.path == "/api/estado":
@@ -2180,26 +2190,18 @@ INDICADOR_WV = None       # indicador flutuante (ouvindo/falando), sempre por ci
 ICONE = RECURSOS / "static" / "icone.ico"
 
 
-def _icone_windows(titulo: str) -> None:
-    """Põe o ícone do Núcleo na janela e na barra de tarefas (no Windows, mesmo rodando pelo Python)."""
-    if platform.system() != "Windows" or not ICONE.exists():
-        return
+def _identidade_windows() -> bool:
+    """Separa a identidade do Núcleo da identidade do interpretador no Windows."""
+    if platform.system() != "Windows":
+        return False
     try:
         import ctypes
-        u32 = ctypes.windll.user32
-        for _ in range(40):                      # espera a janela existir
-            hwnd = u32.FindWindowW(None, titulo)
-            if hwnd:
-                break
-            time.sleep(0.25)
-        else:
-            return
-        grande = u32.LoadImageW(None, str(ICONE), 1, 256, 256, 0x10)
-        pequeno = u32.LoadImageW(None, str(ICONE), 1, 32, 32, 0x10)
-        u32.SendMessageW(hwnd, 0x0080, 1, grande)    # WM_SETICON, ICON_BIG
-        u32.SendMessageW(hwnd, 0x0080, 0, pequeno)   # WM_SETICON, ICON_SMALL
-    except Exception:
-        pass
+        definir = ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID
+        definir.argtypes = [ctypes.c_wchar_p]
+        definir.restype = ctypes.c_long
+        return definir("Nucleo.SegundoCerebro") == 0
+    except (AttributeError, OSError):
+        return False
 
 
 class ApiJanela:
@@ -2218,10 +2220,10 @@ class ApiJanela:
         return True
 
     def ajustar_indicador(self, largura, altura):
-        """O widget cresce e encolhe mantendo a borda direita no lugar (onde você o deixou)."""
+        """Mantém o acesso rápido compacto, sem expandir sobre o trabalho do usuário."""
         if INDICADOR_WV is None:
             return False
-        largura, altura = max(120, min(int(largura), 640)), max(36, min(int(altura), 200))
+        largura, altura = 176, 40  # tamanho fixo, inclusive para páginas antigas em cache
         try:
             direita = INDICADOR_WV.x + INDICADOR_WV.width
             INDICADOR_WV.resize(largura, altura)
@@ -2253,12 +2255,7 @@ def abrir_janela(url: str, bloquear: bool, app=None) -> None:
     global JANELA_WV, INDICADOR_WV
     cfg = app.cfg if app is not None else {}
     tela_cheia = cfg.get("tela_cheia", True)
-    if platform.system() == "Windows":
-        try:
-            import ctypes
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Nucleo.SegundoCerebro")
-        except Exception:
-            pass
+    _identidade_windows()
     try:
         if JANELA == "navegador":
             raise ImportError
@@ -2267,7 +2264,7 @@ def abrir_janela(url: str, bloquear: bool, app=None) -> None:
         JANELA_WV = webview.create_window(PRODUTO, url, width=1360, height=880, min_size=(980, 640),
                                           fullscreen=tela_cheia, background_color="#0A0806", js_api=api_js)
         if cfg.get("indicador_flutuante", True):
-            largura, altura = 264, 46                      # cápsula no canto superior direito (cresce ao falar)
+            largura, altura = 176, 40                      # acesso rápido fixo e discreto
             try:
                 tela = webview.screens[0]
                 x, y = tela.width - largura - 18, 14
@@ -2279,7 +2276,7 @@ def abrir_janela(url: str, bloquear: bool, app=None) -> None:
                                                  background_color="#0A0806", js_api=api_js, easy_drag=True)
 
         def esconder_ou_minimizar():
-            # o widget aparece sempre que a janela some: hora, próximo compromisso e o estado do Núcleo
+            # acesso rápido aparece ao minimizar; detalhes permanecem na janela principal
             if INDICADOR_WV is not None and app is not None:
                 INDICADOR_WV.show()
 
@@ -2299,7 +2296,7 @@ def abrir_janela(url: str, bloquear: bool, app=None) -> None:
             JANELA_WV.events.restored += mostrar_de_volta
         except Exception:
             pass
-        webview.start(lambda: _icone_windows(PRODUTO))
+        webview.start(icon=str(ICONE) if ICONE.is_file() else None)
         return
     except ImportError:
         pass
@@ -2386,6 +2383,7 @@ def testar(cfg: dict) -> None:
 # ================================================================ main
 
 def main() -> None:
+    _identidade_windows()  # antes da bandeja, do WebView e de qualquer janela
     ap = argparse.ArgumentParser(description="Núcleo")
     ap.add_argument("--config", default=str(BASE_DADOS / "config.json"))
     ap.add_argument("--salvar-senha", metavar="APELIDO")

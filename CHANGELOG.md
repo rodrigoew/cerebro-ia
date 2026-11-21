@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 0.23.0-dev — esteira de YouTube e TikTok (preparação, sem publicação de release)
+
+- Reaproveita o editor de cortes da 0.22.0, corrigindo leitura WAV, resultado com zero cortes e renderização parcial.
+- Fila SQLite com deduplicação, trabalhador único, recuperação após reinício e confirmação de envios ambíguos.
+- Observação de pautas por feeds cadastrados, seleção semântica local e prioridade por retenção própria quando disponível.
+- Perfis por tema/plataforma, horários e limites diários, verificação de fontes autorizadas e de mídia alterada.
+- Adaptadores de hospedagem Cloudinary e agendamento automático Buffer para YouTube/TikTok; credenciais no cofre.
+- Ferramentas do agente para consultar fila e temas; diagnóstico e configuração inicial pela CLI.
+- Integrações externas ainda precisam de validação com as contas do usuário. Nenhum canal foi conectado ou vídeo publicado.
+
 ## 0.22.0 — inteligência geral, cérebro na nuvem e visual Jarvis
 
 Grande salto desde a 0.20.0: ela passa a conversar de verdade pelo Claude, virou especialista em vários assuntos, ganhou dezenas de ações e um visual novo.

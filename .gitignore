@@ -2,6 +2,12 @@
 config.json
 config.json.bak
 config.json.tmp
+criador.json
+fontes_online.json
+fontes_online.backup-*.json
+fontes_online.json.tmp-*
+backup-criador-*/
+.deps/
 saida/
 modelos/
 *.db
@@ -27,3 +33,7 @@ Thumbs.db
 
 # o lançador vem de Releases; não vai para o Git
 Nucleo.exe
+
+# Configuração pessoal de início automático
+autonomia.json
+autonomia.json.tmp-*
